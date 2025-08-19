@@ -10,8 +10,8 @@ else
     export MSYSTEM=mingw32
     export PATH="/mingw32/bin:$PATH"
 fi
-FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
-source "$FUNCTION_DIR/function/win_2_posix_abs.sh"
+FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$FUNCTION_DIR/../function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
 normalize_var WORKDIR
 export SRC_DIR="${WORKDIR}/src"
