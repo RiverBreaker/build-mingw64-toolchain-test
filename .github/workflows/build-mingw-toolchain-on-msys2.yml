@@ -21,7 +21,7 @@ jobs:
         exception: [seh]
         crt: [msvcrt, ucrt]
       
-      steps: 
+    steps: 
       - name: Checkout repository
         uses: actions/checkout@v4
 
