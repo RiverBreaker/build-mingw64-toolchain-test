@@ -1,4 +1,4 @@
-FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$FUNCTION_DIR/function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
 normalize_var WORKDIR
