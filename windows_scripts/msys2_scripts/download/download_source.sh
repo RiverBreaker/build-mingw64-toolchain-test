@@ -1,10 +1,20 @@
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+if command -v realpath >/dev/null 2>&1; then
+    WORKDIR="$(realpath -m "$WORKDIR")"
+elif command -v cygpath >/dev/null 2>&1; then
+    WORKDIR="$(cygpath -u "$WORKDIR")"
+else
+    WORKDIR="$(pwd)"
+fi
 SRC_DIR="${WORKDIR}/src"
 echo "Using WORKDIR: $WORKDIR"
 echo "Preparing source dir: $SRC_DIR"
 
 mkdir -p "$SRC_DIR"
 cd "$SRC_DIR"
+
+git config --global core.autocrlf false || true
+echo "git core.autocrlf=$(git config --global core.autocrlf || echo 'unset')"
 
 # Clone the Mingw-w64 repository
 echo "Cloning Mingw-w64 repository..."
