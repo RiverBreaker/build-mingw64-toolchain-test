@@ -39,6 +39,9 @@ jobs:
         shell: msys2 {0}
         run: |
           ls -la
+          ls -la ./windows_scripts
+          ls -la ./windows_scripts/msys2_scripts
+
       - name: Install ${{ matrix.arch }}-${{ matrix.crt }} dependencies
         shell: msys2 {0}
         env:
