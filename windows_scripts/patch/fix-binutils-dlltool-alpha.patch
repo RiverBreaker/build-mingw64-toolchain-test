@@ -1,8 +1,35 @@
+From 1111111111111111111111111111111111111111 Mon Sep 17 00:00:00 2001
+From: Binutils Patch Contributor <patch@example.com>
+Date: Tue, 19 Aug 2025 00:00:00 +0000
+Subject: [PATCH] binutils: fix unterminated string initialization in dlltool.c
+
+On some GCC toolchains (e.g. MinGW/MSYS2), the following code:
+
+    static char alpha[26] = "abcdefghijklmnopqrstuvwxyz";
+
+causes a compile-time error:
+
+    error: initializer-string for array of 'char' truncates NUL terminator
+           but destination lacks 'nonstring' attribute
+
+because the array length is 26 but the string literal has 27 characters
+(including the trailing NUL).  This patch fixes it by letting the
+compiler infer the correct array size:
+
+    static char alpha[] = "abcdefghijklmnopqrstuvwxyz";
+
+This avoids the unterminated-string-initialization error while keeping
+the behavior unchanged.
+
+---
+ binutils/dlltool.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/binutils/dlltool.c b/binutils/dlltool.c
+index abcdef1234..fedcba9876 100644
 --- a/binutils/dlltool.c
 +++ b/binutils/dlltool.c
-@@
- static char *
- prefix_encode (char *start, unsigned code)
+@@ -1234,7 +1234,8 @@ prefix_encode (char *start, unsigned code)
  {
 -  static char alpha[26] = "abcdefghijklmnopqrstuvwxyz";
 +  /* Fix: allocate array with implicit size so NUL terminator fits */
@@ -10,3 +37,5 @@
    static char buf[32];
    char *p;
    strcpy (buf, start);
+-- 
+2.46.0

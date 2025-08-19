@@ -5,6 +5,7 @@ normalize_var WORKDIR
 SRC_DIR="${WORKDIR}/src"
 echo "Using WORKDIR: $WORKDIR"
 echo "Preparing source dir: $SRC_DIR"
+PATCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../patch"
 
 mkdir -p "$SRC_DIR"
 cd "$SRC_DIR"
@@ -36,6 +37,7 @@ if [ -f gas/doc/.dirstamp ]; then
     echo "rm gas/doc/.dirstamp"
     rm gas/doc/.dirstamp
 fi
+git apply $PATCH_DIR/fix-binutils-dlltool-alpha.patch
 cd ..
 
 # Clone the GCC repository

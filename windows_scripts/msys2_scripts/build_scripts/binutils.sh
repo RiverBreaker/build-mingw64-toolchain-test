@@ -28,7 +28,6 @@ if [ ! -d $BUILD_DIR/build-binutils ]; then
 fi
 
 binutils_src="$(realpath -m "${SRC_DIR}/binutils")"
-cd $binutils_src && patch -p1 < $PATCH_DIR/fix-dlltool-alpha.patch
 
 cd $BUILD_DIR/build-binutils
 echo "Configure gnu mingw binutils starting..."
