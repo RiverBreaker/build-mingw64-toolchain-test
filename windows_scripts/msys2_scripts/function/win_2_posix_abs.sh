@@ -23,7 +23,7 @@ to_posix_abs() {
 
   # 1) prefer cygpath if available (most reliable in MSYS2)
   if command -v cygpath >/dev/null 2>&1; then
-    cygpath -u -m "$raw"
+    cygpath -u "$raw"
     return
   fi
 
