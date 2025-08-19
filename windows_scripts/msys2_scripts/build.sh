@@ -4,6 +4,7 @@ echo "====================================================="
 echo "====================================================="
 echo "=              Build mingw64 binutils               ="
 echo "====================================================="
+ls -la $(pwd)
 ./build_scripts/binutils.sh || { echo "binutils build failed"; exit 1; }
 echo "====================================================="
 echo "=              Build mingw64 headers               ="
