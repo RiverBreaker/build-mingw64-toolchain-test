@@ -1,18 +1,18 @@
 # 读取JSON文件并提取对应GCC版本的依赖项
 DEPS_JSON=$(cat dependencies.json)
 
-# 使用jq解析（推荐方法，更可靠）
-echo "Parsing dependencies for GCC ${{ env.GCC_VERSION }}..."
+# 使用jq解析
+echo "Parsing dependencies for GCC $GCC_VERSION..."
 
 # 提取所有依赖版本
-ZLIB_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"${{ env.GCC_VERSION }}\"].zlib_version")
-BINUTILS_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"${{ env.GCC_VERSION }}\"].binutils_version")
-MINGW_W64_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"${{ env.GCC_VERSION }}\"].mingw_w64_version")
-GDB_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"${{ env.GCC_VERSION }}\"].gdb_version")
+ZLIB_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"$GCC_VERSION\"].zlib_version")
+BINUTILS_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"$GCC_VERSION\"].binutils_version")
+MINGW_W64_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"$GCC_VERSION\"].mingw_w64_version")
+GDB_VERSION=$(echo "$DEPS_JSON" | jq -r ".gcc_versions[\"$GCC_VERSION\"].gdb_version")
 
 # 验证是否找到版本
 if [ "$GDB_VERSION" = "null" ]; then
-  echo "Error: GDB version ${{ env.GDB_VERSION }} not found in dependencies.json"
+  echo "Error: GDB version for GCC $GCC_VERSION not found in dependencies.json"
   exit 1
 fi
 
