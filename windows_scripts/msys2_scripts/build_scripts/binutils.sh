@@ -11,6 +11,7 @@ else
     export PATH="/mingw32/bin:$PATH"
 fi
 FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../patch"
 source "$FUNCTION_DIR/../function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
 normalize_var WORKDIR
@@ -27,10 +28,10 @@ if [ ! -d $BUILD_DIR/build-binutils ]; then
 fi
 
 binutils_src="$(realpath -m "${SRC_DIR}/binutils")"
+cd $binutils_src && patch -p1 < $PATCH_DIR/fix-dlltool-alpha.patch
 
 cd $BUILD_DIR/build-binutils
 echo "Configure gnu mingw binutils starting..."
-CFLAGS="-Wno-error=unterminated-string-initialization" \
 ${binutils_src}/configure \
     --target=$TARGET \
     --build=$BUILD \
