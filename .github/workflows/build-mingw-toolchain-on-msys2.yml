@@ -48,7 +48,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
           CRT: ${{ matrix.crt }}
         run: |
-          ./windows_scripts/msys2_scripts/install_dep.sh
+          ./windows_scripts/msys2_scripts/download/install_dep.sh
 
       - name: Mkdir directory
         shell: msys2 {0}
@@ -69,7 +69,7 @@ jobs:
           EXCEPTION: ${{ matrix.exception }}
           GCC_VERSION: ${{ inputs.gcc_version }}
         run: |
-          ./windows_scripts/msys2_scripts/build_scripts/get_dep_version.sh
+          ./windows_scripts/msys2_scripts/download/get_dep_version.sh
       
       - name: Download source
         shell: msys2 {0}
