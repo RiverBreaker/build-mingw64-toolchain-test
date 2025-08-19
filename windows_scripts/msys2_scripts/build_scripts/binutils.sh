@@ -4,9 +4,23 @@ else
     export MSYSTEM="MINGW64"
 fi
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+if command -v realpath >/dev/null 2>&1; then
+    WORKDIR="$(realpath -m "$WORKDIR")"
+elif command -v cygpath >/dev/null 2>&1; then
+    WORKDIR="$(cygpath -u "$WORKDIR")"
+else
+    WORKDIR="$(pwd)"
+fi
 export SRC_DIR="${WORKDIR}/src"
 export BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
+if command -v realpath >/dev/null 2>&1; then
+    PREFIX="$(realpath -m "$PREFIX")"
+elif command -v cygpath >/dev/null 2>&1; then
+    PREFIX="$(cygpath -u "$PREFIX")"
+else
+    PREFIX="$PREFIX"
+fi
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
@@ -16,7 +30,7 @@ if [ ! -d $BUILD_DIR/build-binutils ]; then
     echo "mkdir $BUILD_DIR/build-binutils"
 fi
 
-binutils_src=$(realpath "${SRC_DIR}/binutils")
+binutils_src="$(realpath -m "${SRC_DIR}/binutils")"
 
 cd $BUILD_DIR/build-binutils
 echo "Configure gnu mingw binutils starting..."
