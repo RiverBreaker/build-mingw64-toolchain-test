@@ -1,14 +1,21 @@
 echo "====================================================="
 echo "=              Build mingw64 toolchain              ="
 echo "====================================================="
-if [ "$CRT" == "ucrt" ];then
-    export MSYSTEM=ucrt64
+if [ "$ARCH" == "x86_64" ];then
+    if [ "$CRT" == "ucrt" ];then
+        export MSYSTEM=ucrt64
+        export PATH="/ucrt64/bin:$PATH"
+    else
+        export MSYSTEM=mingw64
+        export PATH="/mingw64/bin:$PATH"
+    fi
 else
-    export MSYSTEM=mingw64
+    export MSYSTEM=mingw32
+    export PATH="/mingw32/bin:$PATH"
 fi
 echo "ARCH: $ARCH"
 echo "THREAD: $THREAD"
-echo "exception: $EXCEPTION"
+echo "EXCEPTION: $EXCEPTION"
 echo "CRT: $CRT"
 echo "MSYSTEM: $MSYSTEM"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)

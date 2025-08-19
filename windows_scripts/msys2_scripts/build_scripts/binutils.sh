@@ -16,7 +16,7 @@ if [ ! -d $BUILD_DIR/build-binutils ]; then
     echo "mkdir $BUILD_DIR/build-binutils"
 fi
 
-binutils_src=$(realpath --relative-to="${BUILD_DIR}/build-binutils" "${SRC_DIR}/binutils")
+binutils_src=$(realpath "${SRC_DIR}/binutils")
 
 cd $BUILD_DIR/build-binutils
 echo "Configure gnu mingw binutils starting..."
