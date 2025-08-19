@@ -1,4 +1,7 @@
+FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+source "$FUNCTION_DIR/function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+normalize_var WORKDIR
 SRC_DIR="${WORKDIR}/src"
 BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"

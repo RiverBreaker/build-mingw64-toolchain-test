@@ -1,9 +1,19 @@
-if [ $CRT == "ucrt" ]; then
-    export MSYSTEM="UCRT64"
+if [ "$ARCH" == "x86_64" ];then
+    if [ "$CRT" == "ucrt" ];then
+        export MSYSTEM=ucrt64
+        export PATH="/ucrt64/bin:$PATH"
+    else
+        export MSYSTEM=mingw64
+        export PATH="/mingw64/bin:$PATH"
+    fi
 else
-    export MSYSTEM="MINGW64"
+    export MSYSTEM=mingw32
+    export PATH="/mingw32/bin:$PATH"
 fi
+FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+source "$FUNCTION_DIR/function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+normalize_var WORKDIR
 export SRC_DIR="${WORKDIR}/src"
 export BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"

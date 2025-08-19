@@ -1,26 +1,22 @@
-if [ $CRT = "ucrt" ]; then
-    export MSYSTEM="UCRT64"
+if [ "$ARCH" == "x86_64" ];then
+    if [ "$CRT" == "ucrt" ];then
+        export MSYSTEM=ucrt64
+        export PATH="/ucrt64/bin:$PATH"
+    else
+        export MSYSTEM=mingw64
+        export PATH="/mingw64/bin:$PATH"
+    fi
 else
-    export MSYSTEM="MINGW64"
+    export MSYSTEM=mingw32
+    export PATH="/mingw32/bin:$PATH"
 fi
+FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+source "$FUNCTION_DIR/function/win_2_posix_abs.sh"
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
-if command -v realpath >/dev/null 2>&1; then
-    WORKDIR="$(realpath -m "$WORKDIR")"
-elif command -v cygpath >/dev/null 2>&1; then
-    WORKDIR="$(cygpath -u "$WORKDIR")"
-else
-    WORKDIR="$(pwd)"
-fi
+normalize_var WORKDIR
 export SRC_DIR="${WORKDIR}/src"
 export BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
-if command -v realpath >/dev/null 2>&1; then
-    PREFIX="$(realpath -m "$PREFIX")"
-elif command -v cygpath >/dev/null 2>&1; then
-    PREFIX="$(cygpath -u "$PREFIX")"
-else
-    PREFIX="$PREFIX"
-fi
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
