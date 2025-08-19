@@ -1,6 +1,16 @@
 echo "====================================================="
 echo "=              Build mingw64 toolchain              ="
 echo "====================================================="
+if [ "$CRT" == "ucrt" ];then
+    export MSYSTEM=ucrt64
+else
+    export MSYSTEM=mingw64
+fi
+echo "ARCH: $ARCH"
+echo "THREAD: $THREAD"
+echo "exception: $EXCEPTION"
+echo "CRT: $CRT"
+echo "MSYSTEM: $MSYSTEM"
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 echo "====================================================="
 echo "=              Build mingw64 binutils               ="
