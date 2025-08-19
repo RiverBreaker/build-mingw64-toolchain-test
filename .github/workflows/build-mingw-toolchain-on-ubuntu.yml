@@ -1,0 +1,137 @@
+name: Build Mingw-w64 Toolchain on Ubuntu
+
+on: 
+  workflow_dispatch:
+    inputs:
+      gcc_version:
+        description: 'GCC 版本号'
+        required: true
+        default: '13.2.0'
+  
+jobs:
+  build-tools:
+    name: Build Tools for Mingw-w64
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        arch: [x86_64]
+        thread: [posix]
+        exception: [seh]
+        crt: [msvcrt]
+
+    env:
+      ARCH: ${{ matrix.arch }}
+      THREAD: ${{ matrix.thread }}
+      EXCEPTION: ${{ matrix.exception }}
+      CRT: ${{ matrix.crt }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make all shell scripts executable
+        run: |
+          find ubuntu_scripts -name "*.sh" -type f -print0 | xargs -0 chmod +x
+          find gnu_scripts -name "*.sh" -type f -print0 | xargs -0 chmod +x
+          find mingw64_scripts -name "*.sh" -type f -print0 | xargs -0 chmod +x
+
+      - name: Install dependencies
+        run: |
+          source ./ubuntu_scripts/download_dep.sh
+      
+      - name: Mkdir build directory
+        run: |
+          source ./ubuntu_scripts/mkdir_directory.sh
+
+      - name: Download source code
+        run: |
+          ./ubuntu_scripts/download_source.sh
+
+      - name: Build gnu dependencies tools
+        run: |
+          source ./gnu_scripts/build_gnu_dep_tools.sh
+      
+      - name: Build gnu binutils
+        run: |
+          source ./gnu_scripts/build_gnu_binutils.sh
+
+      - name: Build gnu Mingw64 dependencies
+        run: |
+          source ./gnu_scripts/build_gnu_mingw64.sh
+
+      - name: Build gnu gcc stage1
+        run: |
+          source ./gnu_scripts/build_gnu_gcc1.sh
+
+      - name: Build gnu crt
+        run: |
+          source ./gnu_scripts/build_gnu_crt.sh
+
+      - name: Build gnu mingw-posix
+        if: ${{ matrix.thread == 'posix' }}
+        run: |
+          source ./gnu_scripts/build_gnu_posix.sh
+
+      - name: Build gnu gcc stage2
+        run: |
+          source ./gnu_scripts/build_gnu_gcc2.sh
+      
+      - name: Build mingw dependencies tools
+        run: |
+          source ./mingw64_scripts/build_mingw_dep_tools.sh
+      
+      - name: Build mingw binutils
+        run: |
+          source ./mingw64_scripts/build_mingw_binutils.sh  
+
+      - name: Build mingw Mingw64 dependencies
+        run: |
+          source ./mingw64_scripts/build_mingw_mingw64.sh
+      
+      - name: Build mingw posix
+        if: ${{ matrix.thread == 'posix' }}
+        run: |
+          source ./mingw64_scripts/build_mingw_posix.sh
+
+      - name: Build mingw gcc
+        run: |
+          source ./mingw64_scripts/build_mingw_gcc_final.sh
+      
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingw-w64-toolchain
+          path: ./build/mingw64
+  
+  version-toolchain:
+    name: Version Toolchain
+    needs: build-tools
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mingw-w64-toolchain
+          path: mingw-w64-toolchain
+
+      - name: Version toolchain
+        shell: cmd
+        run: |
+          :: 1. 创建目标目录并解压
+          mkdir C:\mingw64-tools\mingw64
+
+          xcopy /E /I /Y mingw-w64-toolchain\* C:\mingw64-tools\mingw64\
+
+          :: 2. 把工具链加到 PATH（只对当前 step 生效）
+          set PATH=%PATH%;C:\mingw64-tools\mingw64\bin
+
+          :: 3. 打印版本
+          C:\mingw64-tools\mingw64\bin\x86_64-w64-mingw32-gcc --version
+          C:\mingw64-tools\mingw64\bin\x86_64-w64-mingw32-g++ --version
+          C:\mingw64-tools\mingw64\bin\x86_64-w64-mingw32-ld --version

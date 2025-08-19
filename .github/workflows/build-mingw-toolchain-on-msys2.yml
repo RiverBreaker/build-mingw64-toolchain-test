@@ -1,0 +1,111 @@
+name: Build Mingw64 Toolchain on MSYS2
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc_version:
+        description: 'GCC version'
+        required: true
+        default: '13.2.0'
+
+jobs:
+  build-mingw64-toolchain:
+    name: Build Mingw64 Toolchain for ${{ inputs.gcc_version }} on MSYS2
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        arch: [x86_64]
+        thread: [posix, win32]
+        exception: [seh]
+        crt: [msvcrt, ucrt]
+      
+      steps: 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with: 
+          update: true
+          install: >-
+            base-devel git gperf bison 
+            flex texinfo help2man gawk 
+            libtool automake autoconf
+            zip unzip jq
+      
+      - name: Install ${{ matrix.arch }}-${{ matrix.crt }} dependencies
+        shell: msys2 {0}
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+        run: |
+          ./windows_scripts/msys2_scripts/install_dep.sh
+
+      - name: Mkdir directory
+        shell: msys2 {0}
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+          THREAD: ${{ matrix.thread }}
+          EXCEPTION: ${{ matrix.exception }}
+        run: |
+          ./windows_scripts/msys2_scripts/build_scripts/mkdir.sh
+      
+      - name: Get dependencies version
+        shell: msys2 {0}
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+          THREAD: ${{ matrix.thread }}
+          EXCEPTION: ${{ matrix.exception }}
+          GCC_VERSION: ${{ inputs.gcc_version }}
+        run: |
+          ./windows_scripts/msys2_scripts/build_scripts/get_dep_version.sh
+      
+      - name: Download source
+        shell: msys2 {0}
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+          THREAD: ${{ matrix.thread }}
+          EXCEPTION: ${{ matrix.exception }}
+          GCC_VERSION: ${{ inputs.gcc_version }}
+        run: |
+          ./windows_scripts/msys2_scripts/download/download_source.sh
+
+      - name: Build toolchain
+        shell: msys2 {0}
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+          THREAD: ${{ matrix.thread }}
+          EXCEPTION: ${{ matrix.exception }}
+          GCC_VERSION: ${{ inputs.gcc_version }}
+        run: |
+          ./windows_scripts/msys2_scripts/build.sh
+
+      - name: toolchain version
+        shell: cmd
+        env:
+          ARCH: ${{ matrix.arch }}
+          CRT: ${{ matrix.crt }}
+          THREAD: ${{ matrix.thread }}
+          EXCEPTION: ${{ matrix.exception }}
+          WORKDIR: ${{ github.workspace }}
+        run: |
+          set PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
+          set PATH="${PREFIX}/bin;%PATH%"
+          ${ARCH}-w64-mingw32-gcc --version
+          ${ARCH}-w64-mingw32-g++ --version
+          gdb --version
+
+
+
+
+
+
+
+
+

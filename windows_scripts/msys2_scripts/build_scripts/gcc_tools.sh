@@ -1,0 +1,107 @@
+if [ $CRT = "ucrt" ]; then
+    export MSYSTEM="UCRT64"
+else
+    export MSYSTEM="MINGW64"
+fi
+WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+export SRC_DIR="${WORKDIR}/src"
+export BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
+export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
+export TARGET=x86_64-w64-mingw32
+export BUILD="$(gcc -dumpmachine)"
+export HOST=x86_64-w64-mingw32
+
+for d in build-gmp build-mpfr build-mpc build-isl; do
+    if [ ! -d $BUILD_DIR/$d ]; then
+        mkdir -p $BUILD_DIR/$d
+        echo "mkdir $BUILD_DIR/$d"
+    fi
+done
+
+src=$(realpath --relative-to="${BUILD_DIR}/build-mingw-gmp" "${SRC_DIR}")
+
+# Build dependencies
+# #
+# Build GMP
+cd $BUILD_DIR/build-mingw-gmp
+echo "Configure win mingw gmp starting..."
+${src}/gcc/gmp/configure \
+    --prefix=$PREFIX \
+    --build=$BUILD \
+    --host=$HOST \
+    --disable-shared \
+    --enable-static \
+    --enable-cxx
+echo "Configure GMP completed."
+make -j1 && make install
+echo "Build GMP completed."
+if [ -f "$PREFIX/lib/libgmp.a" ]; then
+    echo "GMP installation verified successfully."
+else
+    echo "GMP installation verification failed." >&2
+fi
+
+# Build MPFR
+cd $BUILD_DIR/build-mingw-mpfr
+echo "Configure win mingw mpfr starting..."
+${src}/gcc/mpfr/configure \
+    --prefix=$PREFIX \
+    --build=$BUILD \
+    --host=$HOST \
+    --disable-shared \
+    --enable-static \
+    --with-gmp=$PREFIX
+echo "Configure MPFR completed."
+make -j1 && make install
+echo "Build MPFR completed."
+if [ -f "$PREFIX/lib/libmpfr.a" ]; then
+    echo "MPFR installation verified successfully."
+else
+    echo "MPFR installation verification failed." >&2
+fi
+
+# Build MPC
+cd $BUILD_DIR/build-mingw-mpc
+echo "Configure win mingw mpc starting..."
+${src}/gcc/mpc/configure \
+    --prefix=$PREFIX \
+    --build=$BUILD \
+    --host=$HOST \
+    --disable-shared \
+    --enable-static \
+    --with-mpfr=$PREFIX \
+    --with-gmp=$PREFIX
+echo "Configure MPC completed."
+make -j1 && make install
+echo "Build MPC completed."
+if [ -f "$PREFIX/lib/libmpc.a" ]; then
+    echo "MPC installation verified successfully."
+else
+    echo "MPC installation verification failed." >&2
+fi
+
+# Build ISL
+cd $BUILD_DIR/build-mingw-isl
+echo "Configure win mingw isl starting..."
+${src}/gcc/isl/configure \
+    --prefix=$PREFIX \
+    --build=$BUILD \
+    --host=$HOST \
+    --disable-shared \
+    --enable-static \
+    --with-gmp-prefix=$PREFIX
+echo "Configure ISL completed."
+make -j1 && make install 
+echo "Build ISL completed."
+if [ -f "$PREFIX/lib/libisl.a" ]; then
+    echo "ISL installation verified successfully."
+else
+    echo "ISL installation verification failed." >&2
+fi
+
+for d in build-gmp build-mpfr build-mpc build-isl; do
+    if [ -d $BUILD_DIR/$d ]; then
+        rm -rf $BUILD_DIR/$d
+        echo "remove $BUILD_DIR/$d"
+    fi
+done
