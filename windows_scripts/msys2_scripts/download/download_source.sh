@@ -1,4 +1,9 @@
 WORKDIR="${GITHUB_WORKSPACE:-$(pwd)}"
+echo "which realpath: $(command -v realpath || echo none)"
+echo "realpath -v: $(realpath --version 2>/dev/null || echo no-realpath)"
+echo "which cygpath: $(command -v cygpath || echo none)"
+echo "pwd => $(pwd)"
+echo "GITHUB_WORKSPACE raw => ${GITHUB_WORKSPACE:-unset}"
 if command -v realpath >/dev/null 2>&1; then
     WORKDIR="$(realpath -m "$WORKDIR")"
 elif command -v cygpath >/dev/null 2>&1; then
