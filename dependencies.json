@@ -4,20 +4,31 @@
       "zlib_version": "1.2.13",
       "binutils_version": "2.41",
       "mingw_w64_version": "11.0.1",
-      "gdb_version": "13.2"
+      "gdb_version": "13.2",
+      "readline_version": "8.2",
+      "m4_version": "1.4.19",
+      "libtool_version": "2.5.4",
+      "libiconv_version": "1.18"
     },
     "12.3.0": {
       "zlib_version": "1.2.12",
       "binutils_version": "2.39",
       "mingw_w64_version": "10.0.0",
-      "gdb_version": "12.1"
-
+      "gdb_version": "12.1",
+      "readline_version": "8.2",
+      "m4_version": "1.4.19",
+      "libtool_version": "2.5.4",
+      "libiconv_version": "1.18"
     },
     "11.4.0": {
       "zlib_version": "1.2.12",
       "binutils_version": "2.38",
       "mingw_w64_version": "9.0.0",
-      "gdb_version": "11.2"
+      "gdb_version": "11.2",
+      "readline_version": "8.2",
+      "m4_version": "1.4.19",
+      "libtool_version": "2.5.4",
+      "libiconv_version": "1.18"
     }
   }
 }

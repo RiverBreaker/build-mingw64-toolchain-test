@@ -24,41 +24,43 @@ git checkout tags/v${MINGW_W64_VERSION} -b v${MINGW_W64_VERSION} || git checkout
 cd ..
 
 # Clone the Binutils repository
-BINUTILS_NOP_VERSION=${BINUTILS_VERSION//./_}
-echo "Cloning Binutils repository..."
+echo "Downloading Binutils repository..."
 if [ ! -d binutils ]; then
-  git clone https://github.com/bminor/binutils-gdb.git binutils
+  wget -c https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VERSION}.tar.gz && \
+  tar -xzf binutils-${BINUTILS_VERSION}.tar.gz && \
+  mv binutils-${BINUTILS_VERSION} binutils && \
+  rm -f binutils-${BINUTILS_VERSION}.tar.gz
+  if [ -f binutils/gas/doc/.dirstamp ]; then
+    echo "rm binutils/gas/doc/.dirstamp"
+    rm -f binutils/gas/doc/.dirstamp
+  fi
 fi
-cd binutils
-git fetch --tags --prune
-git checkout tags/binutils-${BINUTILS_NOP_VERSION} -b binutils-${BINUTILS_NOP_VERSION} || \
-git checkout binutils-${BINUTILS_NOP_VERSION}
-if [ -f gas/doc/.dirstamp ]; then
-    echo "rm gas/doc/.dirstamp"
-    rm gas/doc/.dirstamp
-fi
-echo "patch to binutils for msys2"
-patch -s -p1 < $PATCH_DIR/fix-binutils-readline-sigfix.patch || { echo "Failed to apply patch"; exit 1; }
-cd ..
 
 # Clone the GCC repository
 echo "Cloning GCC repository..."
 if [ ! -d gcc ]; then
-  git clone https://github.com/gcc-mirror/gcc.git gcc
+  wget -c https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz && \
+  tar -xzf gcc-${GCC_VERSION}.tar.gz && \
+  mv gcc-${GCC_VERSION} gcc && \
+  rm -f gcc-${GCC_VERSION}.tar.gz
+  cd gcc
+  if [ -x contrib/download_prerequisites ]; then
+    echo "Running contrib/download_prerequisites..."
+    ./contrib/download_prerequisites
+  else
+    echo "Warning: contrib/download_prerequisites not found or not executable yet; ensure you run this inside gcc source dir."
+  fi
+  cd ..
 fi
-cd gcc
-git fetch --tags --prune
-git checkout tags/releases/gcc-${GCC_VERSION} -b releases/gcc-${GCC_VERSION} || \
-git checkout releases/gcc-${GCC_VERSION}
 
-# Download prerequisites for GCC (this requires network/wget/curl)
-if [ -x contrib/download_prerequisites ]; then
-  echo "Running contrib/download_prerequisites..."
-  ./contrib/download_prerequisites
-else
-  echo "Warning: contrib/download_prerequisites not found or not executable yet; ensure you run this inside gcc source dir."
+# Download readline
+echo "Downloading readline source code..."
+if [ ! -d readline ]; then
+  wget -c https://ftp.gnu.org/gnu/readline/readline-${READLINE_VERSION}.tar.gz && \
+  tar -xzf readline-${READLINE_VERSION}.tar.gz && \
+  mv readline-${READLINE_VERSION} readline && \
+  rm -f readline-${READLINE_VERSION}.tar.gz
 fi
-cd ..
 
 # Download MCF Threading Library
 # if [ $GCC_VERSION <= 13.0.0 ]; then
@@ -73,37 +75,37 @@ cd ..
 # Download GDB
 echo "Downloading GDB source code..."
 if [ ! -d gdb ]; then
-  wget -c https://ftp.gnu.org/gnu/gdb/gdb-${GDB_VERSION}.tar.gz
-  tar -xzf gdb-${GDB_VERSION}.tar.gz
-  mv gdb-${GDB_VERSION} gdb
+  wget -c https://ftp.gnu.org/gnu/gdb/gdb-${GDB_VERSION}.tar.gz && \
+  tar -xzf gdb-${GDB_VERSION}.tar.gz && \
+  mv gdb-${GDB_VERSION} gdb && \
   rm -f gdb-${GDB_VERSION}.tar.gz
 fi
 
 # Download Libiconv
 echo "Downloading Libiconv source code..."
 if [ ! -d libiconv ]; then
-  wget -c https://ftp.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz
-  tar -xzf libiconv-1.18.tar.gz
-  mv libiconv-1.18 libiconv
-  rm -f libiconv-1.18.tar.gz
+  wget -c https://ftp.gnu.org/gnu/libiconv/libiconv-${LIBICONV_VERSION}.tar.gz && \
+  tar -xzf libiconv-${LIBICONV_VERSION}.tar.gz && \
+  mv libiconv-${LIBICONV_VERSION} libiconv && \
+  rm -f libiconv-${LIBICONV_VERSION}.tar.gz
 fi
 
 # Download M4
 echo "Downloading M4 source code..."
 if [ ! -d m4 ]; then
-  wget -c https://ftp.gnu.org/gnu/m4/m4-1.4.20.tar.gz
-  tar -xzf m4-1.4.20.tar.gz
-  mv m4-1.4.20 m4
-  rm -f m4-1.4.20.tar.gz
+  wget -c https://ftp.gnu.org/gnu/m4/m4-${M4_VERSION}.tar.gz && \
+  tar -xzf m4-${M4_VERSION}.tar.gz && \
+  mv m4-${M4_VERSION} m4 && \
+  rm -f m4-${M4_VERSION}.tar.gz
 fi
 
 # Download Libtool
 echo "Downloading Libtool source code..."
 if [ ! -d libtool ]; then
-  wget -c https://ftp.gnu.org/gnu/libtool/libtool-2.5.4.tar.gz
-  tar -xzf libtool-2.5.4.tar.gz
-  mv libtool-2.5.4 libtool
-  rm -f libtool-2.5.4.tar.gz
+  wget -c https://ftp.gnu.org/gnu/libtool/libtool-${LIBTOOL_VERSION}.tar.gz && \
+  tar -xzf libtool-${LIBTOOL_VERSION}.tar.gz && \
+  mv libtool-${LIBTOOL_VERSION} libtool && \
+  rm -f libtool-${LIBTOOL_VERSION}.tar.gz
 fi
 
 echo "All downloads completed."
