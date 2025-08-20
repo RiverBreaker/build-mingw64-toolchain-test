@@ -37,7 +37,16 @@ if [ -f gas/doc/.dirstamp ]; then
     echo "rm gas/doc/.dirstamp"
     rm gas/doc/.dirstamp
 fi
-git apply $PATCH_DIR/fix-binutils-dlltool-alpha.patch
+if git apply --check "$PATCH_DIR/fix-binutils-dlltool-alpha.patch"; then
+  echo "fallback patch check OK — applying stripped patch"
+  git apply "$PATCH_DIR/fix-binutils-dlltool-alpha.patch"
+else
+  echo "Both primary and fallback patch checks failed. Show first 80 lines of patch for diagnosis:"
+  nl -ba -w3 -s': ' "$PATCH_DIR/fix-binutils-dlltool-alpha.patch" | sed -n '1,80p'
+  echo "Also trying to show git apply verbose output:"
+  git apply --check --verbose "$PATCH_DIR/fix-binutils-dlltool-alpha.patch" 2>&1
+  exit 1
+fi
 cd ..
 
 # Clone the GCC repository
