@@ -30,18 +30,23 @@ for d in build-gmp build-mpfr build-mpc build-isl; do
 done
 
 src=$(realpath --relative-to="${BUILD_DIR}/build-gmp" "${SRC_DIR}")
+for d in gmp mpfr mpc isl; do
+    if [ -d "${SRC_DIR}/gcc/$d" ]; then
+        mv ${src}/gcc/$d ${SRC_DIR}/
+    fi
+done
 
 # Build dependencies
 # #
 # Build GMP
 cd $BUILD_DIR/build-gmp
 echo "Configure win mingw gmp starting..."
-${src}/gcc/gmp/configure \
+${src}/gmp/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --disable-shared \
-    --enable-static \
+    --enable-shared \
+    --disable-static \
     --enable-cxx
 echo "Configure GMP completed."
 make -j1 && make install
@@ -55,12 +60,12 @@ fi
 # Build MPFR
 cd $BUILD_DIR/build-mpfr
 echo "Configure win mingw mpfr starting..."
-${src}/gcc/mpfr/configure \
+${src}/mpfr/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --disable-shared \
-    --enable-static \
+    --enable-shared \
+    --disable-static \
     --with-gmp=$PREFIX
 echo "Configure MPFR completed."
 make -j1 && make install
@@ -74,12 +79,12 @@ fi
 # Build MPC
 cd $BUILD_DIR/build-mpc
 echo "Configure win mingw mpc starting..."
-${src}/gcc/mpc/configure \
+${src}/mpc/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --disable-shared \
-    --enable-static \
+    --enable-shared \
+    --disable-static \
     --with-mpfr=$PREFIX \
     --with-gmp=$PREFIX
 echo "Configure MPC completed."
@@ -94,12 +99,12 @@ fi
 # Build ISL
 cd $BUILD_DIR/build-isl
 echo "Configure win mingw isl starting..."
-${src}/gcc/isl/configure \
+${src}/isl/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --disable-shared \
-    --enable-static \
+    --enable-shared \
+    --disable-static \
     --with-gmp-prefix=$PREFIX
 echo "Configure ISL completed."
 make -j1 && make install 
