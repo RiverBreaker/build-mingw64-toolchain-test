@@ -57,16 +57,17 @@ ${SRC_DIR}/gmp/configure \
     --enable-shared \
     --disable-static \
     --enable-cxx \
-    ${ABI}
+    ABI=$ABI
 echo "Configure GMP completed."
 make -j1 && make install
 echo "Build GMP completed."
-if [ -f "$PREFIX/lib/libgmp.*" ]; then
+if ls "$PREFIX/lib"/libgmp.* >/dev/null 2>&1; then
     echo "GMP installation verified successfully."
     ls -la $PREFIX/lib/libgmp.*
 else
     echo "GMP installation verification failed." >&2
 fi
+
 
 # Build MPFR
 cd $BUILD_DIR/build-mpfr
@@ -81,7 +82,7 @@ ${SRC_DIR}/mpfr/configure \
 echo "Configure MPFR completed."
 make -j1 && make install
 echo "Build MPFR completed."
-if [ -f "$PREFIX/lib/libmpfr.*" ]; then
+if ls "$PREFIX/lib"/libmpfr.* >/dev/null 2>&1; then
     echo "MPFR installation verified successfully."
     ls -la $PREFIX/lib/libmpfr.*
 else
@@ -102,7 +103,7 @@ ${SRC_DIR}/mpc/configure \
 echo "Configure MPC completed."
 make -j1 && make install
 echo "Build MPC completed."
-if [ -f "$PREFIX/lib/libmpc.*" ]; then
+if ls "$PREFIX/lib"/libmpc.* >/dev/null 2>&1; then
     echo "MPC installation verified successfully."
     ls -la $PREFIX/lib/libmpc.*
 else
@@ -122,13 +123,13 @@ ${SRC_DIR}/isl/configure \
 echo "Configure ISL completed."
 make -j1 && make install 
 echo "Build ISL completed."
-if [ -f "$PREFIX/lib/libisl.*" ]; then
+if ls "$PREFIX/lib"/libisl.* >/dev/null 2>&1; then
     echo "ISL installation verified successfully."
     ls -la $PREFIX/lib/libisl.*
 else
     echo "ISL installation verification failed." >&2
 fi
-
+sleep 20
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ -d $BUILD_DIR/$d ]; then
         rm -rf $BUILD_DIR/$d
