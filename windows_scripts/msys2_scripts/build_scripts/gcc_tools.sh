@@ -40,8 +40,8 @@ ${src}/gcc/gmp/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --enable-cxx
 echo "Configure GMP completed."
 make -j1 && make install
@@ -59,8 +59,8 @@ ${src}/gcc/mpfr/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --with-gmp=$PREFIX
 echo "Configure MPFR completed."
 make -j1 && make install
@@ -78,8 +78,8 @@ ${src}/gcc/mpc/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --with-mpfr=$PREFIX \
     --with-gmp=$PREFIX
 echo "Configure MPC completed."
@@ -98,8 +98,8 @@ ${src}/gcc/isl/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --with-gmp-prefix=$PREFIX
 echo "Configure ISL completed."
 make -j1 && make install 
