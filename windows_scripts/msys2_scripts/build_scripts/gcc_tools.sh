@@ -32,8 +32,8 @@ done
 src=$(realpath --relative-to="${BUILD_DIR}/build-gmp" "${SRC_DIR}")
 for d in gmp mpfr mpc isl; do
     if [ -d "${SRC_DIR}/gcc/$d" ]; then
-        mv ${src}/gcc/$d ${SRC_DIR}/
-        echo "Move ${src}/gcc/$d to ${SRC_DIR}/"
+        mv ${SRC_DIR}/gcc/$d ${SRC_DIR}/
+        echo "Move ${SRC_DIR}/gcc/$d to ${SRC_DIR}/"
     fi
 done
 
