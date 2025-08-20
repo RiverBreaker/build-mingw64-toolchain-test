@@ -38,7 +38,7 @@ if [ -f gas/doc/.dirstamp ]; then
     rm gas/doc/.dirstamp
 fi
 echo "patch to binutils for msys2"
-patch -p1 < $PATCH_DIR/fix-binutils-readline-sigfix.patch || { echo "Failed to apply patch"; exit 1; }
+patch -s -p1 < $PATCH_DIR/fix-binutils-readline-sigfix.patch || { echo "Failed to apply patch"; exit 1; }
 cd ..
 
 # Clone the GCC repository
