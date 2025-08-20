@@ -22,6 +22,9 @@ export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
 export PATH="$PREFIX/bin:$PATH"
 
+export CC=gcc
+export CXX=g++
+
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ ! -d $BUILD_DIR/$d ]; then
         mkdir -p $BUILD_DIR/$d
@@ -52,8 +55,9 @@ ${SRC_DIR}/gmp/configure \
 echo "Configure GMP completed."
 make -j1 && make install
 echo "Build GMP completed."
-if [ -f "$PREFIX/lib/libgmp.a" ]; then
+if [ -f "$PREFIX/lib/libgmp.*" ]; then
     echo "GMP installation verified successfully."
+    ls -la $PREFIX/lib/libgmp.*
 else
     echo "GMP installation verification failed." >&2
 fi
@@ -71,8 +75,9 @@ ${SRC_DIR}/mpfr/configure \
 echo "Configure MPFR completed."
 make -j1 && make install
 echo "Build MPFR completed."
-if [ -f "$PREFIX/lib/libmpfr.a" ]; then
+if [ -f "$PREFIX/lib/libmpfr.*" ]; then
     echo "MPFR installation verified successfully."
+    ls -la $PREFIX/lib/libmpfr.*
 else
     echo "MPFR installation verification failed." >&2
 fi
@@ -91,8 +96,9 @@ ${SRC_DIR}/mpc/configure \
 echo "Configure MPC completed."
 make -j1 && make install
 echo "Build MPC completed."
-if [ -f "$PREFIX/lib/libmpc.a" ]; then
+if [ -f "$PREFIX/lib/libmpc.*" ]; then
     echo "MPC installation verified successfully."
+    ls -la $PREFIX/lib/libmpc.*
 else
     echo "MPC installation verification failed." >&2
 fi
@@ -110,8 +116,9 @@ ${SRC_DIR}/isl/configure \
 echo "Configure ISL completed."
 make -j1 && make install 
 echo "Build ISL completed."
-if [ -f "$PREFIX/lib/libisl.a" ]; then
+if [ -f "$PREFIX/lib/libisl.*" ]; then
     echo "ISL installation verified successfully."
+    ls -la $PREFIX/lib/libisl.*
 else
     echo "ISL installation verification failed." >&2
 fi
