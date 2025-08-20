@@ -21,4 +21,3 @@ for d in "$SRC_DIR" "$BUILD_DIR" "$PREFIX"; do
     }
 done
 find . -type f \( -true -o -name '*.sh' -o -name '*.patch' \) -print0 | xargs -0 dos2unix
-sed -i -e '$a\' ./windows_scripts/patch/fix-binutils-dlltool-alpha.patch
