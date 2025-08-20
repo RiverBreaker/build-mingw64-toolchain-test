@@ -50,7 +50,8 @@ RANLIB="$RANLIB" \
     --disable-w32api \
     --disable-lib32 \
     --enable-lib64 \
-    --enable-private-exports
+    --enable-private-exports \
+    --with-default-msvcrt=$CRT
 echo "Configure crt completed."
 make -j1 && make install
 echo "Build crt completed."

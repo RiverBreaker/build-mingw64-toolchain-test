@@ -44,7 +44,8 @@ $SRC_DIR/mingw-w64/mingw-w64-headers/configure \
     --build=$BUILD \
     --target=$TARGET \
     --host=$HOST \
-    --enable-idl
+    --enable-idl \
+    --with-default-msvcrt=$CRT
 echo "Configure headers completed."
 make -j1 && make install
 echo "Build headers completed."
