@@ -33,6 +33,7 @@ src=$(realpath --relative-to="${BUILD_DIR}/build-gmp" "${SRC_DIR}")
 for d in gmp mpfr mpc isl; do
     if [ -d "${SRC_DIR}/gcc/$d" ]; then
         mv ${src}/gcc/$d ${SRC_DIR}/
+        echo "Move ${src}/gcc/$d to ${SRC_DIR}/"
     fi
 done
 
@@ -41,7 +42,7 @@ done
 # Build GMP
 cd $BUILD_DIR/build-gmp
 echo "Configure win mingw gmp starting..."
-${src}/gmp/configure \
+${SRC_DIR}/gmp/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
@@ -60,7 +61,7 @@ fi
 # Build MPFR
 cd $BUILD_DIR/build-mpfr
 echo "Configure win mingw mpfr starting..."
-${src}/mpfr/configure \
+${SRC_DIR}/mpfr/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
@@ -79,7 +80,7 @@ fi
 # Build MPC
 cd $BUILD_DIR/build-mpc
 echo "Configure win mingw mpc starting..."
-${src}/mpc/configure \
+${SRC_DIR}/mpc/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
@@ -99,7 +100,7 @@ fi
 # Build ISL
 cd $BUILD_DIR/build-isl
 echo "Configure win mingw isl starting..."
-${src}/isl/configure \
+${SRC_DIR}/isl/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
     --host=$HOST \
