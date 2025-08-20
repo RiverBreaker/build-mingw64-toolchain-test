@@ -2,13 +2,19 @@ if [ "$ARCH" == "x86_64" ];then
     if [ "$CRT" == "ucrt" ];then
         export MSYSTEM=ucrt64
         export PATH="/ucrt64/bin:$PATH"
+        export CC="/ucrt64/bin/gcc"
+        export CXX="/ucrt64/bin/g++"
     else
         export MSYSTEM=mingw64
         export PATH="/mingw64/bin:$PATH"
+        export CC="/mingw64/bin/gcc"
+        export CXX="/mingw64/bin/g++"
     fi
 else
     export MSYSTEM=mingw32
     export PATH="/mingw32/bin:$PATH"
+    export CC="/mingw32/bin/gcc"
+    export CXX="/mingw32/bin/g++"
 fi
 FUNCTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$FUNCTION_DIR/../function/win_2_posix_abs.sh"
@@ -20,9 +26,6 @@ export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
-
-export CC=gcc
-export CXX=g++
 
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ ! -d $BUILD_DIR/$d ]; then
