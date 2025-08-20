@@ -19,7 +19,7 @@ export SRC_DIR="${WORKDIR}/src"
 export BUILD_DIR="${WORKDIR}/build-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export TARGET=x86_64-w64-mingw32
-export BUILD="$(/usr/bin/config.guess 2>/dev/null || echo "$(uname -m)-pc-msys")"
+export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
 
 if [ ! -d $BUILD_DIR/build-binutils ]; then
