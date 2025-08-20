@@ -21,9 +21,6 @@ export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
 
-export CC=gcc
-export CXX=g++
-
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ ! -d $BUILD_DIR/$d ]; then
         mkdir -p $BUILD_DIR/$d
