@@ -21,6 +21,9 @@ export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
 
+export CC=gcc
+export CXX=g++
+
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ ! -d $BUILD_DIR/$d ]; then
         mkdir -p $BUILD_DIR/$d
@@ -49,7 +52,6 @@ echo "Configure win mingw gmp starting..."
 ${SRC_DIR}/gmp/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
-    --host=$HOST \
     --enable-shared \
     --disable-static \
     --enable-cxx \
@@ -71,7 +73,6 @@ echo "Configure win mingw mpfr starting..."
 ${SRC_DIR}/mpfr/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
-    --host=$HOST \
     --enable-shared \
     --disable-static \
     --with-gmp=$PREFIX
@@ -91,7 +92,6 @@ echo "Configure win mingw mpc starting..."
 ${SRC_DIR}/mpc/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
-    --host=$HOST \
     --enable-shared \
     --disable-static \
     --with-mpfr=$PREFIX \
@@ -112,7 +112,6 @@ echo "Configure win mingw isl starting..."
 ${SRC_DIR}/isl/configure \
     --prefix=$PREFIX \
     --build=$BUILD \
-    --host=$HOST \
     --enable-shared \
     --disable-static \
     --with-gmp-prefix=$PREFIX
