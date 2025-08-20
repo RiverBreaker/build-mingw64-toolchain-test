@@ -33,7 +33,7 @@ jobs:
             base-devel git gperf bison 
             flex texinfo help2man gawk 
             libtool automake autoconf
-            zip unzip jq
+            zip unzip jq doc2unix
       
       - name: ls MSYS2 root
         shell: msys2 {0}

@@ -20,4 +20,4 @@ for d in "$SRC_DIR" "$BUILD_DIR" "$PREFIX"; do
         exit 1
     }
 done
-find . -type f \( -o -name '*.sh' -o -name '*.patch' \) -print0 | xargs -0 dos2unix
+find . -type f \( -true -o -name '*.sh' -o -name '*.patch' \) -print0 | xargs -0 dos2unix
