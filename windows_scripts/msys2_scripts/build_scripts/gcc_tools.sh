@@ -20,7 +20,6 @@ export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
-export PATH="$PREFIX/bin:$PATH"
 
 export CC=gcc
 export CXX=g++
