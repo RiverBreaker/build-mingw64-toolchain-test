@@ -44,6 +44,11 @@ done
 # #
 # Build GMP
 cd $BUILD_DIR/build-gmp
+if [ "${ARCH}" == "x86_64" ]; then
+    ABI=64
+else
+    ABI=32
+fi
 echo "Configure win mingw gmp starting..."
 ${SRC_DIR}/gmp/configure \
     --prefix=$PREFIX \
@@ -51,7 +56,8 @@ ${SRC_DIR}/gmp/configure \
     --host=$HOST \
     --enable-shared \
     --disable-static \
-    --enable-cxx
+    --enable-cxx \
+    ${ABI}
 echo "Configure GMP completed."
 make -j1 && make install
 echo "Build GMP completed."
