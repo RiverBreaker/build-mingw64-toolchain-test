@@ -5,7 +5,7 @@ normalize_var WORKDIR
 SRC_DIR="${WORKDIR}/src"
 echo "Using WORKDIR: $WORKDIR"
 echo "Preparing source dir: $SRC_DIR"
-PATCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../patch"
+PATCH_DIR="${WORKDIR}/windows_scripts/patch"
 
 mkdir -p "$SRC_DIR"
 cd "$SRC_DIR"
@@ -37,6 +37,8 @@ if [ -f gas/doc/.dirstamp ]; then
     echo "rm gas/doc/.dirstamp"
     rm gas/doc/.dirstamp
 fi
+echo "patch to binutils for msys2"
+patch -p1 < $PATCH_DIR/fix-binutils-readline-sigfix.patch || { echo "Failed to apply patch"; exit 1; }
 cd ..
 
 # Clone the GCC repository

@@ -1,0 +1,13 @@
+*** readline/rlstdc.h.orig      2025-08-20 12:00:00.000000000 +0000
+--- readline/rlstdc.h   2025-08-20 12:05:00.000000000 +0000
+@@
+-/* existing SigHandler typedef (varies by version) */
+-typedef void (*SigHandler)();   /* <-- original-style that causes mismatch */
++/* Fix: On Windows (MSVCRT / UCRT), signal handlers must be 'void handler(int)' */
++typedef void (*SigHandler)(int);
+
+*** readline/signals.c.orig     2025-08-20 12:00:00.000000000 +0000
+--- readline/signals.c  2025-08-20 12:05:00.000000000 +0000
+@@
+-#define SIGHANDLER_RETURN return 0
++#define SIGHANDLER_RETURN return
