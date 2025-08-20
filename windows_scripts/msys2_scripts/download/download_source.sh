@@ -37,13 +37,6 @@ if [ -f gas/doc/.dirstamp ]; then
     echo "rm gas/doc/.dirstamp"
     rm gas/doc/.dirstamp
 fi
-perl -0777 -pe 's{^([ \t]*)static char alpha\[26\] = "abcdefghijklmnopqrstuvwxyz";$}{'\
-'\1/* Fix: allocate array with implicit size so NUL terminator fits */\n'\
-'\1static char alpha[] = "abcdefghijklmnopqrstuvwxyz";'\
-'}m' -i "./binutils/dlltool.c" || {
-    echo "❌ Failed to patch binutils/dlltool.c" >&2
-    exit 1
-}
 cd ..
 
 # Clone the GCC repository

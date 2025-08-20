@@ -31,6 +31,7 @@ binutils_src="$(realpath -m "${SRC_DIR}/binutils")"
 
 cd $BUILD_DIR/build-binutils
 echo "Configure gnu mingw binutils starting..."
+CFLAGS="-Wno-error=unterminated-string-initialization -DSigHandler='void (*)(int)' -DSIGHANDLER_RETURN=return" \
 ${binutils_src}/configure \
     --target=$TARGET \
     --build=$BUILD \
