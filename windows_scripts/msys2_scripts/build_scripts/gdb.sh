@@ -22,8 +22,6 @@ export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
 export PATH=$PREFIX/bin:$PATH
 
-export CC_FOR_BUILD=gcc
-export CXX_FOR_BUILD=g++
 export CC=$TARGET-gcc
 export CXX=$TARGET-g++
 export AR=$TARGET-ar

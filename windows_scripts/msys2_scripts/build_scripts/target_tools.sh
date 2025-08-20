@@ -21,6 +21,15 @@ export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
+export PATH="$PREFIX/bin:$PATH"
+
+export CC=$TARGET-gcc
+export CXX=$TARGET-g++
+export AR=$TARGET-ar
+export RANLIB=$TARGET-ranlib
+export STRIP=$TARGET-strip
+export AS=$TARGET-as
+export DLLTOOL=$TARGET-dlltool
 
 for d in build-zlib build-libiconv; do
     if [ ! -d $BUILD_DIR/$d ]; then

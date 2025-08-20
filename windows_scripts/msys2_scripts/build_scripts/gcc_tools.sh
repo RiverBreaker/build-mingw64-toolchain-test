@@ -20,6 +20,7 @@ export PREFIX="${WORKDIR}/mingw64-${ARCH}-${THREAD}-${EXCEPTION}-${CRT}"
 export TARGET=x86_64-w64-mingw32
 export BUILD="$(gcc -dumpmachine)"
 export HOST=x86_64-w64-mingw32
+export PATH="$PREFIX/bin:$PATH"
 
 for d in build-gmp build-mpfr build-mpc build-isl; do
     if [ ! -d $BUILD_DIR/$d ]; then
@@ -28,12 +29,12 @@ for d in build-gmp build-mpfr build-mpc build-isl; do
     fi
 done
 
-src=$(realpath --relative-to="${BUILD_DIR}/build-mingw-gmp" "${SRC_DIR}")
+src=$(realpath --relative-to="${BUILD_DIR}/build-gmp" "${SRC_DIR}")
 
 # Build dependencies
 # #
 # Build GMP
-cd $BUILD_DIR/build-mingw-gmp
+cd $BUILD_DIR/build-gmp
 echo "Configure win mingw gmp starting..."
 ${src}/gcc/gmp/configure \
     --prefix=$PREFIX \
@@ -52,7 +53,7 @@ else
 fi
 
 # Build MPFR
-cd $BUILD_DIR/build-mingw-mpfr
+cd $BUILD_DIR/build-mpfr
 echo "Configure win mingw mpfr starting..."
 ${src}/gcc/mpfr/configure \
     --prefix=$PREFIX \
@@ -71,7 +72,7 @@ else
 fi
 
 # Build MPC
-cd $BUILD_DIR/build-mingw-mpc
+cd $BUILD_DIR/build-mpc
 echo "Configure win mingw mpc starting..."
 ${src}/gcc/mpc/configure \
     --prefix=$PREFIX \
@@ -91,7 +92,7 @@ else
 fi
 
 # Build ISL
-cd $BUILD_DIR/build-mingw-isl
+cd $BUILD_DIR/build-isl
 echo "Configure win mingw isl starting..."
 ${src}/gcc/isl/configure \
     --prefix=$PREFIX \

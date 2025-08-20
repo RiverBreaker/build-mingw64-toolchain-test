@@ -49,7 +49,7 @@ echo "Build Binutils completed."
 ls $PREFIX/bin
 
 # Post-installation verification
-if [ -x "$PREFIX/bin/$TARGET-ld" ]; then
+if [ -x "$PREFIX/bin/ld" ]; then
     echo "Binutils installation verified successfully."
 else
     echo "Binutils installation verification failed." >&2
