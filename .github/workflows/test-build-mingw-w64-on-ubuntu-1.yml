@@ -150,6 +150,9 @@ jobs:
           make -j$(nproc)
           make install
 
+          mkdir -p "${PREFIX}/${TARGET}/mingw"
+          ln -sfn "${PREFIX}/${TARGET}/include" "${PREFIX}/${TARGET}/mingw/include"
+
           echo "构建gcc step 1"
           mkdir -p "${BUILD_DIR}/gcc-stage1-build"
           cd "${BUILD_DIR}/gcc-stage1-build"
@@ -222,7 +225,7 @@ jobs:
           export AR="${PREFIX}/bin/${TARGET}-ar"
           export AS="${PREFIX}/bin/${TARGET}-as"
           export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
-          
+
           make -j$(nproc)
           make install
 
