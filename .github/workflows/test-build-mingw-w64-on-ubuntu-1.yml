@@ -37,7 +37,7 @@ jobs:
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
         run: |
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          export MINGW_BASE_URL="https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release"
+          export MINGW_BASE_URL="https://github.com/mingw-w64/mingw-w64/archive/refs/tags"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
           mkdir -p "${SOURCE_CODE_DIR}"
@@ -47,7 +47,7 @@ jobs:
           # 下载binutils源码
           curl -sSL "${GNU_BASE_URL}/binutils/binutils-2.40.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
           # 下载mingw-w64源码
-          curl -sSL "${MINGW_BASE_URL}/mingw-w64-v11.0.1.tar.bz2/download" -o "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
+          curl -sSL "${MINGW_BASE_URL}/v11.0.1.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.gz"
 
           echo "解压源码包"
           tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" \
@@ -60,7 +60,7 @@ jobs:
           # 后续操作
           mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
           mv "${SOURCE_CODE_DIR}/binutils-2.40" "${SOURCE_CODE_DIR}/binutils"
-          mv "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1" "${SOURCE_CODE_DIR}/mingw-w64"
+          mv "${SOURCE_CODE_DIR}/mingw-w64-11.0.1" "${SOURCE_CODE_DIR}/mingw-w64"
           cd "${SOURCE_CODE_DIR}/gcc"
           ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
 
