@@ -54,7 +54,7 @@ jobs:
           && rm -rf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
           tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/" \
           && rm -rf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
-          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2" -C "${SOURCE_CODE_DIR}/" \
+          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.gz" -C "${SOURCE_CODE_DIR}/" \
           && rm -rf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
           echo "解压完成"
           # 后续操作
