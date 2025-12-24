@@ -2,11 +2,11 @@ name: Test Build Mingw-w64 on Ubuntu(1)
 
 on:
   workflow_dispatch:
-  input:
-    gcc-version:
-      description: 'GCC Version'
-      required: true
-      default: '13.2.0'
+    inputs:
+      gcc-version:
+        description: 'GCC Version'
+        required: true
+        default: '13.2.0'
 
 jobs:
   build-cross:
