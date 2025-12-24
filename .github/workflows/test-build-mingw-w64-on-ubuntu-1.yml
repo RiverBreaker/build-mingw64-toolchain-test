@@ -149,7 +149,7 @@ jobs:
             --disable-multilib
           make -j$(nproc)
           make install
-
+          ls -l "${PREFIX}/${TARGET}/"
           mkdir -p "${PREFIX}/${TARGET}/mingw"
           ln -sfn "${PREFIX}/${TARGET}/include" "${PREFIX}/${TARGET}/mingw/include"
 
