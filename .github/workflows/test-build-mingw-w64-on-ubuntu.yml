@@ -16,29 +16,29 @@ jobs:
       GCC_VERSION: ${{ github.event.inputs.gcc-version }}
 
       steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+        - name: Checkout repository
+          uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential
+        - name: Install dependencies
+          run: |
+            sudo apt-get update
+            sudo apt-get install -y build-essential
 
-      - name: Download Source Code
-        run: |
-          ./download-source.sh
+        - name: Download Source Code
+          run: |
+            ./download-source.sh
 
-      - name: Build
-        run: |
-          export GCC_VERSION="${GCC_VERSION}"
-          export GCC_TYPE="cross"
-          export GCC_ARCH="x86_64"
-          export GCC_PREFIX="/usr/local/mingw-w64-build/install/${GCC_VERSION}-${GCC_ARCH}-${GCC_TYPE}"
-          export GCC_BUILD_ROOT_DIR="/usr/local/mingw-w64-build/build/${GCC_VERSION}-${GCC_ARCH}-${GCC_TYPE}"
+        - name: Build
+          run: |
+            export GCC_VERSION="${GCC_VERSION}"
+            export GCC_TYPE="cross"
+            export GCC_ARCH="x86_64"
+            export GCC_PREFIX="/usr/local/mingw-w64-build/install/${GCC_VERSION}-${GCC_ARCH}-${GCC_TYPE}"
+            export GCC_BUILD_ROOT_DIR="/usr/local/mingw-w64-build/build/${GCC_VERSION}-${GCC_ARCH}-${GCC_TYPE}"
 
-          ./build.sh \
-            --gcc-version $GCC_VERSION \
-            --gcc-type $GCC_TYPE \
-            --gcc-prefix $GCC_PREFIX \
-            --gcc-arch $GCC_ARCH \
-            --build-root-dir $GCC_BUILD_ROOT_DIR \
+            ./build.sh \
+              --gcc-version $GCC_VERSION \
+              --gcc-type $GCC_TYPE \
+              --gcc-prefix $GCC_PREFIX \
+              --gcc-arch $GCC_ARCH \
+              --build-root-dir $GCC_BUILD_ROOT_DIR \

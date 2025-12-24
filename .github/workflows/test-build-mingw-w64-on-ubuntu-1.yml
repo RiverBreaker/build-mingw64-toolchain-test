@@ -50,9 +50,12 @@ jobs:
           curl -sSL "${MINGW_BASE_URL}/mingw-w64-v11.0.1.tar.bz2/download" -o "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
 
           echo "解压源码包"
-          tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/"
-          tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/"
-          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2" -C "${SOURCE_CODE_DIR}/"
+          tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" \
+          && rm -rf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
+          tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/" \
+          && rm -rf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
+          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2" -C "${SOURCE_CODE_DIR}/" \
+          && rm -rf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
           echo "解压完成"
           # 后续操作
           mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
@@ -61,19 +64,35 @@ jobs:
           cd "${SOURCE_CODE_DIR}/gcc"
           ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
 
+          # 清理 gcc 目录中的依赖目录（如果有的话）
           for d in gmp mpfr mpc isl; do
             if [ -d "${SOURCE_CODE_DIR}/gcc/$d" ]; then
+              echo "删除 ${SOURCE_CODE_DIR}/gcc/$d"
               rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
             fi
           done
-          for d in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
-            if [ -d "${SOURCE_CODE_DIR}/$d" ]; then
-              rm -rf "${SOURCE_CODE_DIR}/$d"
+
+          # 删除可能存在的压缩包文件
+          for f in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
+            if [ -f "${SOURCE_CODE_DIR}/$f" ]; then
+              echo "删除压缩包 ${SOURCE_CODE_DIR}/$f"
+              rm -f "${SOURCE_CODE_DIR}/$f"
             fi
           done
-          for d in gmp mpfr mpc isl; do
-            if [ -d "${SOURCE_CODE_DIR}/$d-*" ]; then
-              ln -s "${SOURCE_CODE_DIR}/$d-*" "${SOURCE_CODE_DIR}/$d"
+          for name in gmp mpfr mpc isl; do
+            # 查找以该名称开头的目录（去掉版本号）
+            # 使用shopt -s nullglob防止在没有匹配时返回通配符本身
+            shopt -s nullglob
+            dirs=(${name}-*/)
+            shopt -u nullglob
+
+            if [ ${#dirs[@]} -gt 0 ] && [ -d "${dirs[0]}" ]; then
+              dir="${dirs[0]%/}"  # 去除结尾的斜杠
+              echo "重命名 $dir 为 $name"
+              rm -rf "$name" 2>/dev/null || true
+              mv "${SOURCE_CODE_DIR}/$dir" "$name"
+            else
+              echo "警告: 未找到 $name-* 目录"
             fi
           done
 
