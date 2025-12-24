@@ -61,23 +61,25 @@ jobs:
           cd "${SOURCE_CODE_DIR}/gcc"
           ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
 
-          for "$d" in gmp mpfr mpc isl; do
+          for d in gmp mpfr mpc isl; do
             if [ -d "${SOURCE_CODE_DIR}/gcc/$d" ]; then
               rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
             fi
           done
-          for "$d" in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
+          for d in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
             if [ -d "${SOURCE_CODE_DIR}/$d" ]; then
               rm -rf "${SOURCE_CODE_DIR}/$d"
             fi
           done
-          for "$d" in gmp mpfr mpc isl; do
+          for d in gmp mpfr mpc isl; do
             if [ -d "${SOURCE_CODE_DIR}/$d-*" ]; then
               ln -s "${SOURCE_CODE_DIR}/$d-*" "${SOURCE_CODE_DIR}/$d"
             fi
           done
 
           ls -la "${SOURCE_CODE_DIR}"
+          echo "ls -la ${SOURCE_CODE_DIR}/gcc"
+          ls -la "${SOURCE_CODE_DIR}/gcc"
 
 
 
