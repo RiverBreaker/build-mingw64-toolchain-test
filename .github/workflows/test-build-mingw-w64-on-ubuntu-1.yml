@@ -96,11 +96,272 @@ jobs:
             fi
           done
 
-          ls -la "${SOURCE_CODE_DIR}"
-          echo "ls -la ${SOURCE_CODE_DIR}/gcc"
-          ls -la "${SOURCE_CODE_DIR}/gcc"
+      - name: Build cross
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export BUILD_DIR="${GITHUB_WORKSPACE}/build-cross"
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
+
+          for d in ${BUILD_DIR} "${PREFIX}"; do
+            if [ -d "${d}" ]; then
+              echo "删除目录 ${d}"
+              rm -rf "${d}"
+            fi
+            echo "创建目录 ${d}"
+            mkdir -p "${d}"
+          done
+          cd "${BUILD_DIR}"
+
+          # cross三元组
+          export BUILD="x86_64-pc-linux-gnu"
+          export HOST="x86_64-pc-linux-gnu"
+          export TARGET="x86_64-w64-mingw32"
+
+          echo "构建 binutils"
+          mkdir -p "${BUILD_DIR}/binutils-build"
+          cd "${BUILD_DIR}/binutils-build"
+          "${SOURCE_CODE_DIR}/binutils/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --disable-werror
+          make -j$(nproc)
+          make install
+
+          export PATH="${PREFIX}/bin:${PATH}"
+
+          echo "构建mingw-w64-headers"
+          mkdir -p "${BUILD_DIR}/mingw-headers-build"
+          cd "${BUILD_DIR}/mingw-headers-build"
+          "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
+            --prefix="${PREFIX}/${TARGET}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --enable-sdk=all \
+            --enable-secure-api \
+            --enable-idl \
+            --disable-multilib
+          make -j$(nproc)
+          make install
+
+          echo "构建gcc step 1"
+          mkdir -p "${BUILD_DIR}/gcc-stage1-build"
+          cd "${BUILD_DIR}/gcc-stage1-build"
+          "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --enable-languages=c \
+            --without-headers \
+            --disable-shared \
+            --disable-threads \
+            --disable-libatomic \
+            --disable-libgomp \
+            --disable-libquadmath \
+            --disable-libssp \
+            --disable-libvtv \
+            --disable-libstdcxx \
+            --disable-nls \
+            --with-gmp=/usr \
+            --with-mpfr=/usr \
+            --with-mpc=/usr \
+            --with-isl=/usr
+          make -j$(nproc) all-gcc
+          make install-gcc
+
+          export CC="${PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${PREFIX}/bin/${TARGET}-g++"
+          export LD="${PREFIX}/bin/${TARGET}-ld"
+          export AR="${PREFIX}/bin/${TARGET}-ar"
+          export AS="${PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+
+          mkdir -p "${BUILD_DIR}/mingw-crt-build"
+          cd "${BUILD_DIR}/mingw-crt-build"
+          "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" \
+            --prefix="${PREFIX}/${TARGET}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --with-sysroot="${PREFIX}/${TARGET}"
+          make -j$(nproc)
+          make install
+
+          echo "构建gcc step 2"
+          mkdir -p "${BUILD_DIR}/gcc-full-build"
+          cd "${BUILD_DIR}/gcc-full-build"
+          "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --enable-languages=c,c++ \
+            --enable-threads=posix \
+            --enable-shared \
+            --enable-static \
+            --with-sysroot="${PREFIX}/${TARGET}" \
+            --disable-nls \
+            --with-gmp=/usr \
+            --with-mpfr=/usr \
+            --with-mpc=/usr \
+            --with-isl=/usr
+          make -j$(nproc)
+          make install
+
+      - name: verify cross compiler
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
+          export TARGET="x86_64-w64-mingw32"
+
+          ls "${PREFIX}/bin/"
+
+          echo "验证交叉编译器"
+          "${PREFIX}/bin/${TARGET}-gcc" --version
+          "${PREFIX}/bin/${TARGET}-g++" --version
+
+          echo -e "\n7.3 编译简单的C程序（验证生成Windows PE文件）"
+          cat > test-cross.c << 'EOF'
+          #include <stdio.h>
+          int main() {
+              printf("Hello from cross-compiler! This is a Windows executable.\n");
+              return 0;
+          }
+          EOF
+
+          # 使用交叉编译器编译
+          "${PREFIX}/bin/${TARGET}-gcc" test-cross.c -o test-cross.exe
+
+          echo "检查生成的文件类型："
+          file test-cross.exe || true
+          echo "文件应显示为 'PE32+ executable (console) x86-64, for MS Windows'"
+
+          # 在Linux上不能运行这个.exe，但可以检查文件是否存在
+          if [ -f "test-cross.exe" ]; then
+              echo "✓ 成功生成了Windows可执行文件"
+              ls -lh test-cross.exe
+          else
+              echo "✗ 未能生成可执行文件"
+              exit 1
+          fi
+
+          echo -e "\n7.4 编译C++程序（验证C++支持）"
+          cat > test-cross.cpp << 'EOF'
+          #include <iostream>
+          int main() {
+              std::cout << "Hello from C++ cross-compiler!" << std::endl;
+              return 0;
+          }
+          EOF
+
+          "${PREFIX}/bin/${TARGET}-g++" test-cross.cpp -o test-cross-cpp.exe
+
+          echo "检查C++生成的文件类型："
+          file test-cross-cpp.exe || true
+
+          echo -e "\n7.5 验证链接到mingw-w64库"
+          cat > test-windows.c << 'EOF'
+          #include <windows.h>
+          #include <stdio.h>
+          int main() {
+              MessageBoxA(NULL, "Hello from Windows API!", "Test", MB_OK);
+              printf("Message box should have appeared (if run on Windows)\n");
+              return 0;
+          }
+          EOF
+
+          "${PREFIX}/bin/${TARGET}-gcc" test-windows.c -o test-windows.exe \
+            -Wl,--subsystem,windows
+
+          echo "检查Windows GUI程序："
+          file test-windows.exe || true
+
+          echo -e "\n7.6 清理测试文件"
+          rm -f test-cross.c test-cross.cpp test-windows.c \
+                test-cross.exe test-cross-cpp.exe test-windows.exe
+
+      # - name: Build native
+      #   shell: bash
+      #   env:
+      #     GITHUB_WORKSPACE: ${{ github.workspace }}
+      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+      #   run: |
+      #     export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+      #     export BUILD_DIR="${GITHUB_WORKSPACE}/build-native"
+      #     export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
+
+      #     for d in ${BUILD_DIR} "${PREFIX}"; do
+      #       if [ -d "${d}" ]; then
+      #         echo "删除目录 ${d}"
+      #         rm -rf "${d}"
+      #       fi
+      #       echo "创建目录 ${d}"
+      #       mkdir -p "${d}"
+      #     done
+      #     cd "${BUILD_DIR}"
+
+      #     # cross三元组
+      #     export BUILD="x86_64-pc-linux-gnu"
+      #     export HOST="x86_64-w64-mingw32"
+      #     export TARGET="x86_64-w64-mingw32"
+
+      #     echo "构建 binutils"
 
 
 
+      #     echo "构建gmp mpfr mpc isl"
+      #     mkdir -p "${BUILD_DIR}/gmp-build" "${BUILD_DIR}/mpfr-build" "${BUILD_DIR}/mpc-build" "${BUILD_DIR}/isl-build"
+      #     cd "${BUILD_DIR}/gmp-build"
+      #     "${SOURCE_CODE_DIR}/gmp/configure" \
+      #       --prefix="${PREFIX}" \
+      #       --host="${HOST}" \
+      #       --build="${BUILD}" \
+      #       --enable-static \
+      #       --disable-shared
+      #     make -j$(nproc)
+      #     make install
+      #     cd "${BUILD_DIR}/mpfr-build"
+      #     "${SOURCE_CODE_DIR}/mpfr/configure" \
+      #       --prefix="${PREFIX}" \
+      #       --host="${HOST}" \
+      #       --build="${BUILD}" \
+      #       --with-gmp="${PREFIX}" \
+      #       --enable-static \
+      #       --disable-shared
+      #     make -j$(nproc)
+      #     make install
+      #     cd "${BUILD_DIR}/mpc-build"
+      #     "${SOURCE_CODE_DIR}/mpc/configure" \
+      #       --prefix="${PREFIX}" \
+      #       --host="${HOST}" \
+      #       --build="${BUILD}" \
+      #       --with-gmp="${PREFIX}" \
+      #       --with-mpfr="${PREFIX}" \
+      #       --enable-static \
+      #       --disable-shared
+      #     make -j$(nproc)
+      #     make install
+      #     cd "${BUILD_DIR}/isl-build"
+      #     "${SOURCE_CODE_DIR}/isl/configure" \
+      #       --prefix="${PREFIX}" \
+      #       --host="${HOST}" \
+      #       --build="${BUILD}" \
+      #       --with-gmp-prefix="${PREFIX}" \
+      #       --enable-static \
+      #       --disable-shared
+      #     make -j$(nproc)
+      #     make install
 
 
