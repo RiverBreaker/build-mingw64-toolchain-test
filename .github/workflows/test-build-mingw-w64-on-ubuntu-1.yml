@@ -71,7 +71,7 @@ jobs:
               rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
             fi
           done
-
+          cd "${SOURCE_CODE_DIR}"
           # 删除可能存在的压缩包文件
           for f in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
             if [ -f "${SOURCE_CODE_DIR}/$f" ]; then
