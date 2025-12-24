@@ -1,0 +1,85 @@
+#! /usr/bin/env sh
+
+set -e
+
+source ../config/url.conf
+source function/functions.sh
+source function/get_versions.sh
+
+while [ $# -gt 0 ]; do
+    arg="$1"
+    case "$arg" in
+        --*=*)
+            # 等号格式的参数
+            option="${arg%%=*}"  # 获取等号前的部分
+            value="${arg#*=}"    # 获取等号后的部分
+
+            case "$option" in
+                --gcc-version) GCC_VERSION="$value" ;;
+                --gcc-type) GCC_TYPE="$value" ;;
+                --gcc-prefix) GCC_PREFIX="$value" ;;
+                --gcc-arch) GCC_ARCH="$value" ;;
+                --build-root-dir) BUILD_ROOT_DIR="$value" ;;
+                *)
+                    echo "Unknown argument: $option"
+                    exit 1
+                    ;;
+            esac
+            shift
+            ;;
+        --*)
+            # 空格分隔的参数
+            case "$arg" in
+                --gcc-version)
+                    GCC_VERSION="$2"
+                    shift 2
+                    ;;
+                --gcc-type)
+                    GCC_TYPE="$2"
+                    shift 2
+                    ;;
+                --gcc-prefix)
+                    GCC_PREFIX="$2"
+                    shift 2
+                    ;;
+                --gcc-arch)
+                    GCC_ARCH="$2"
+                    shift 2
+                    ;;
+                --build-root-dir)
+                    BUILD_ROOT_DIR="$2"
+                    shift 2
+                    ;;
+                *)
+                    echo "Unknown argument: $arg"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            exit 1
+            ;;
+    esac
+done
+
+if [  ]
+
+if [[ $GCC_TYPE == "cross" ]]; then
+    # Cross-compilation specific logic
+    echo "Cross-compilation detected"
+    source cross.sh \
+        --gcc-version "$GCC_VERSION" \
+        --gcc-prefix "$GCC_PREFIX-cross" \
+        --gcc-arch "$GCC_ARCH" \
+        --build-root-dir "$BUILD_ROOT_DIR"
+else
+    # Native compilation specific logic
+    echo "Native compilation detected"
+    source native.sh \
+        --gcc-version "$GCC_VERSION" \
+        --gcc-prefix "$GCC_PREFIX-native" \
+        --gcc-arch "$GCC_ARCH" \
+        --build-root-dir "$BUILD_ROOT_DIR"
+fi
+

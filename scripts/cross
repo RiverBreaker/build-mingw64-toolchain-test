@@ -1,0 +1,35 @@
+#! /usr/bin/env sh
+set -e
+
+export BUILD_TYPE="cross"
+
+while [ "#" -gt 0 ]; do
+    case "$1" in
+        --*=*)
+            option="${1%%=*}"
+            value="${1#*=}"
+            case "$option" in
+                --gcc-prefix) GCC_PREFIX="$value" ;;
+                --build-arch) BUILD_ARCH="$value" ;;
+                --build-root-dir) BUILD_ROOT_DIR="$value" ;;
+            esac
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
+
+echo.
+echo "开始构建binutils..."
+echo.
+
+./build-component/build-binutils.sh \
+    --build-type="${BUILD_TYPE}" \
+    --build-root-dir="${BUILD_ROOT_DIR}" \
+    --build-arch="${GCC_ARCH}" \
+    --prefix="${GCC_PREFIX}/${BUILD_TYPE}-binutils"
+
+

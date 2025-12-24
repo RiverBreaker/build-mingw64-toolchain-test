@@ -1,0 +1,85 @@
+name: Test Build Mingw-w64 on Ubuntu(1)
+
+on:
+  workflow_dispatch:
+  input:
+    gcc-version:
+      description: 'GCC Version'
+      required: true
+      default: '13.2.0'
+
+jobs:
+  build-cross:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install System dependencies
+        shell: bash
+        run: |
+          echo "sudo apt-get update"
+          sudo apt-get update 2>&1
+          echo "sudo apt-get install -y build-essential autoconf automake libtool pkg-config flex bison texinfo lzma-dev zlib1g-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev git wget tar xz-utils"
+          sudo apt-get install -y \
+            build-essential autoconf automake \
+            libtool pkg-config flex bison texinfo \
+            lzma-dev zlib1g-dev nasm \
+            libgmp-dev libmpfr-dev libmpc-dev libisl-dev \
+            git wget tar xz-utils \
+            2>&1
+
+      - name: Download Source Code
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export MINGW_BASE_URL="https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release"
+          export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+
+          mkdir -p "${SOURCE_CODE_DIR}"
+          echo "Downloading source code to ${SOURCE_CODE_DIR}"
+          # 下载gcc源码
+          curl -sSL "${GNU_BASE_URL}/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz" -o "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
+          # 下载binutils源码
+          curl -sSL "${GNU_BASE_URL}/binutils/binutils-2.40.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
+          # 下载mingw-w64源码
+          curl -sSL "${MINGW_BASE_URL}/mingw-w64-v11.0.1.tar.bz2/download" -o "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
+
+          echo "解压源码包"
+          tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/"
+          tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/"
+          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2" -C "${SOURCE_CODE_DIR}/"
+          echo "解压完成"
+          # 后续操作
+          mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
+          mv "${SOURCE_CODE_DIR}/binutils-2.40" "${SOURCE_CODE_DIR}/binutils"
+          mv "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1" "${SOURCE_CODE_DIR}/mingw-w64"
+          cd "${SOURCE_CODE_DIR}/gcc"
+          ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
+
+          for "$d" in gmp mpfr mpc isl; do
+            if [ -d "${SOURCE_CODE_DIR}/gcc/$d" ]; then
+              rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
+            fi
+          done
+          for "$d" in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
+            if [ -d "${SOURCE_CODE_DIR}/$d" ]; then
+              rm -rf "${SOURCE_CODE_DIR}/$d"
+            fi
+          done
+          for "$d" in gmp mpfr mpc isl; do
+            if [ -d "${SOURCE_CODE_DIR}/$d-*" ]; then
+              ln -s "${SOURCE_CODE_DIR}/$d-*" "${SOURCE_CODE_DIR}/$d"
+            fi
+          done
+
+          ls -la "${SOURCE_CODE_DIR}"
+
+
+
+
+

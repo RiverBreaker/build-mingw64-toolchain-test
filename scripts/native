@@ -1,0 +1,4 @@
+#! /usr/bin/env sh
+set -e
+
+export BUILD_TYPE="native"
