@@ -27,7 +27,7 @@ jobs:
             libtool pkg-config flex bison texinfo \
             lzma-dev zlib1g-dev nasm \
             libgmp-dev libmpfr-dev libmpc-dev libisl-dev \
-            git wget tar xz-utils \
+            git wget tar xz-utils wine \
             2>&1
 
       - name: Download Source Code
