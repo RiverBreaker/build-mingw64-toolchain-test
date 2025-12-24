@@ -209,7 +209,7 @@ jobs:
             --build="${BUILD}" \
             --disable-multilib \
             --enable-languages=c,c++ \
-            --enable-threads=posix \
+            --enable-threads=win32 \
             --enable-shared \
             --enable-static \
             --with-sysroot="${PREFIX}/${TARGET}" \
