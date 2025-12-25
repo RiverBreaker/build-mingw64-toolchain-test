@@ -47,20 +47,20 @@ jobs:
           # 下载binutils源码
           curl -sSL "${GNU_BASE_URL}/binutils/binutils-2.40.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
           # 下载mingw-w64源码
-          curl -sSL "${MINGW_BASE_URL}/v11.0.1.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.gz"
+          curl -sSL "${MINGW_BASE_URL}/v12.0.0.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz"
 
           echo "解压源码包"
           tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" \
           && rm -rf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
           tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/" \
           && rm -rf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
-          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.gz" -C "${SOURCE_CODE_DIR}/" \
-          && rm -rf "${SOURCE_CODE_DIR}/mingw-w64-v11.0.1.tar.bz2"
+          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz" -C "${SOURCE_CODE_DIR}/" \
+          && rm -rf "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.bz2"
           echo "解压完成"
           # 后续操作
           mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
           mv "${SOURCE_CODE_DIR}/binutils-2.40" "${SOURCE_CODE_DIR}/binutils"
-          mv "${SOURCE_CODE_DIR}/mingw-w64-11.0.1" "${SOURCE_CODE_DIR}/mingw-w64"
+          mv "${SOURCE_CODE_DIR}/mingw-w64-12.0.0" "${SOURCE_CODE_DIR}/mingw-w64"
           cd "${SOURCE_CODE_DIR}/gcc"
           ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
 
