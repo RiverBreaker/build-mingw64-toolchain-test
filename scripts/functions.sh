@@ -32,20 +32,22 @@ if [[ $_use_color -eq 1 ]]; then
   BLUE=$'\033[34m'
   BOLD=$'\033[1m'
   RESET=$'\033[0m'
+  TS=$'\033[36m'
 else
   RED=''
   YELLOW=''
   BLUE=''
   BOLD=''
   RESET=''
+  TS=''
 fi
 
 
 timestamp() { date +"%H:%M:%S"; }
 
-info()  { echo -e "${BLUE}[$(timestamp)] INFO:${RESET} $*"; }
-warn()  { echo -e "${YELLOW}[$(timestamp)] WARN:${RESET} $*" >&2; }
-die()   { local msg="$1"; local code="${2:-1}"; echo -e "${RED}${BOLD}[$(timestamp)] ERROR:${RESET} $msg" >&2; exit "$code"; }
+info()  { echo -e "${TS}[$(timestamp)] ${BLUE} INFO:${RESET} $*"; }
+warn()  { echo -e "${TS}[$(timestamp)] ${YELLOW} WARN:${RESET} $*" >&2; }
+die()   { local msg="$1"; local code="${2:-1}"; echo -e "${TS}[$(timestamp)] ${RED}${BOLD} ERROR:${RESET} $msg" >&2; exit "$code"; }
 
 # -------------------- Internal helpers --------------------
 _sanitize() { echo "$*" | tr ' /:|()' '___' | tr -s '_' ; }
