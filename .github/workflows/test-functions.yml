@@ -124,6 +124,8 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
           # tuning
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
           LOG_TAIL_LINES=120
           FAIL_ON_FATAL_IN_SUCCESS=1
