@@ -206,6 +206,7 @@ jobs:
           run "mingw-crt: install" make install
 
           # gcc full build
+          run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
           run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build" && cd "${BUILD_DIR}/gcc-full-build"
           run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
