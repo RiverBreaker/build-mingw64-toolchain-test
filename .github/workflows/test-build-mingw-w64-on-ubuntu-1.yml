@@ -36,65 +36,81 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
         run: |
+          set -euo pipefail
+          # load helper functions (assumes scripts/functions.sh is committed)
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+
+          # optional tuning
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=80
+          FAIL_ON_FATAL_IN_SUCCESS=1
+
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           export MINGW_BASE_URL="https://github.com/mingw-w64/mingw-w64/archive/refs/tags"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
-          mkdir -p "${SOURCE_CODE_DIR}"
-          echo "Downloading source code to ${SOURCE_CODE_DIR}"
-          # 下载gcc源码
-          curl -sSL "${GNU_BASE_URL}/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz" -o "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
-          # 下载binutils源码
-          curl -sSL "${GNU_BASE_URL}/binutils/binutils-2.40.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
-          # 下载mingw-w64源码
-          curl -sSL "${MINGW_BASE_URL}/v12.0.0.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz"
+          # make base dir
+          run "创建源码目录" mkdir -p "${SOURCE_CODE_DIR}"
+          run "打印目标目录" echo "Downloading source code to ${SOURCE_CODE_DIR}"
 
-          echo "解压源码包"
-          tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" \
-          && rm -rf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
-          tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/" \
-          && rm -rf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
-          tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz" -C "${SOURCE_CODE_DIR}/" \
-          && rm -rf "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.bz2"
-          echo "解压完成"
-          # 后续操作
-          mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
-          mv "${SOURCE_CODE_DIR}/binutils-2.40" "${SOURCE_CODE_DIR}/binutils"
-          mv "${SOURCE_CODE_DIR}/mingw-w64-12.0.0" "${SOURCE_CODE_DIR}/mingw-w64"
+          # 下载源码（每个下载都包装 run）
+          run "下载 gcc ${GCC_VERSION}" curl -sSL "${GNU_BASE_URL}/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz" -o "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
+          run "下载 binutils 2.40" curl -sSL "${GNU_BASE_URL}/binutils/binutils-2.40.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
+          run "下载 mingw-w64 v12.0.0" curl -sSL "${MINGW_BASE_URL}/v12.0.0.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz"
+
+          # 解压
+          run "解压 gcc" tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
+          run "解压 binutils" tar -xf "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/binutils-2.40.tar.gz"
+          run "解压 mingw-w64" tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0.tar.gz"
+
+          run "整理源码目录名" bash -lc '
+            mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
+            mv "${SOURCE_CODE_DIR}/binutils-2.40" "${SOURCE_CODE_DIR}/binutils"
+            # the extracted dir name may vary; try common variant:
+            if [ -d "${SOURCE_CODE_DIR}/mingw-w64-12.0.0" ]; then
+              mv "${SOURCE_CODE_DIR}/mingw-w64-12.0.0" "${SOURCE_CODE_DIR}/mingw-w64"
+            elif [ -d "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0" ]; then
+              mv "${SOURCE_CODE_DIR}/mingw-w64-v12.0.0" "${SOURCE_CODE_DIR}/mingw-w64"
+            fi
+          '
+
+          # run contrib/download_prerequisites (wrapped)
           cd "${SOURCE_CODE_DIR}/gcc"
-          ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
+          run "GCC: 下载依赖 (download_prerequisites)" ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
 
-          # 清理 gcc 目录中的依赖目录（如果有的话）
+          # 清理可能存在的依赖目录/压缩包（保持你的逻辑）
+          cd "${SOURCE_CODE_DIR}/gcc"
           for d in gmp mpfr mpc isl; do
             if [ -d "${SOURCE_CODE_DIR}/gcc/$d" ]; then
-              echo "删除 ${SOURCE_CODE_DIR}/gcc/$d"
-              rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
+              run "删除 ${SOURCE_CODE_DIR}/gcc/$d" rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
             fi
           done
+
           cd "${SOURCE_CODE_DIR}"
-          # 删除可能存在的压缩包文件
           for f in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
             if [ -f "${SOURCE_CODE_DIR}/$f" ]; then
-              echo "删除压缩包 ${SOURCE_CODE_DIR}/$f"
-              rm -f "${SOURCE_CODE_DIR}/$f"
+              run "删除压缩包 ${f}" rm -f "${SOURCE_CODE_DIR}/$f"
             fi
           done
+
+          # 重命名库目录（保留你的现有逻辑）
+          cd "${SOURCE_CODE_DIR}"
           for name in gmp mpfr mpc isl; do
-            # 查找以该名称开头的目录（去掉版本号）
-            # 使用shopt -s nullglob防止在没有匹配时返回通配符本身
+            # nullglob for portability in bash (we already source functions.sh so bash is available)
             shopt -s nullglob
             dirs=(${name}-*/)
             shopt -u nullglob
 
             if [ ${#dirs[@]} -gt 0 ] && [ -d "${dirs[0]}" ]; then
-              dir="${dirs[0]%/}"  # 去除结尾的斜杠
-              echo "重命名 $dir 为 $name"
-              rm -rf "$name" 2>/dev/null || true
-              mv "${SOURCE_CODE_DIR}/$dir" "$name"
+              dir="${dirs[0]%/}"
+              run "重命名 ${dir} 为 ${name}" bash -lc "rm -rf \"$name\" 2>/dev/null || true; mv \"${SOURCE_CODE_DIR}/${dir}\" \"${SOURCE_CODE_DIR}/${name}\""
             else
-              echo "警告: 未找到 $name-* 目录"
+              warn "未找到 ${name}-* 目录"
             fi
           done
+
+          info "下载与解压步骤完成"
+
 
       - name: Build cross
         shell: bash
@@ -102,61 +118,51 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
         run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+
+          # tuning
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=120
+          FAIL_ON_FATAL_IN_SUCCESS=1
+
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           export BUILD_DIR="${GITHUB_WORKSPACE}/build-cross"
           export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
 
-          for d in ${BUILD_DIR} "${PREFIX}"; do
+          # prepare dirs
+          for d in "${BUILD_DIR}" "${PREFIX}"; do
             if [ -d "${d}" ]; then
-              echo "删除目录 ${d}"
-              rm -rf "${d}"
+              run "清理目录 ${d}" rm -rf "${d}"
             fi
-            echo "创建目录 ${d}"
-            mkdir -p "${d}"
+            run "创建目录 ${d}" mkdir -p "${d}"
           done
+
           cd "${BUILD_DIR}"
 
-          # cross三元组
           export BUILD="x86_64-pc-linux-gnu"
           export HOST="x86_64-pc-linux-gnu"
           export TARGET="x86_64-w64-mingw32"
 
-          echo "构建 binutils"
-          mkdir -p "${BUILD_DIR}/binutils-build"
-          cd "${BUILD_DIR}/binutils-build"
-          "${SOURCE_CODE_DIR}/binutils/configure" \
-            --prefix="${PREFIX}" \
-            --target="${TARGET}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --disable-multilib \
-            --disable-werror
-          make -j$(nproc)
-          make install
+          # binutils
+          run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
+          run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" --prefix="${PREFIX}" --target="${TARGET}" --host="${HOST}" --build="${BUILD}" --disable-multilib --disable-werror
+          run "binutils: make" make -j$(nproc)
+          run "binutils: make install" make install
 
           export PATH="${PREFIX}/bin:${PATH}"
 
-          echo "构建mingw-w64-headers"
-          mkdir -p "${BUILD_DIR}/mingw-headers-build"
-          cd "${BUILD_DIR}/mingw-headers-build"
-          "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
-            --prefix="${PREFIX}/${TARGET}" \
-            --host="${TARGET}" \
-            --build="${BUILD}" \
-            --enable-sdk=all \
-            --enable-secure-api \
-            --enable-idl \
-            --disable-multilib
-          make -j$(nproc)
-          make install
-          ls -l "${PREFIX}/${TARGET}/"
-          mkdir -p "${PREFIX}/${TARGET}/mingw"
-          ln -sfn "${PREFIX}/${TARGET}/include" "${PREFIX}/${TARGET}/mingw/include"
+          # mingw headers
+          run "构建 mingw-w64 headers: setup dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --enable-sdk=all --enable-secure-api --enable-idl --disable-multilib
+          run "mingw-headers: make" make -j$(nproc)
+          run "mingw-headers: install" make install
+          run "ls prefix target dir" ls -l "${PREFIX}/${TARGET}/"
+          run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
 
-          echo "构建gcc step 1"
-          mkdir -p "${BUILD_DIR}/gcc-stage1-build"
-          cd "${BUILD_DIR}/gcc-stage1-build"
-          "${SOURCE_CODE_DIR}/gcc/configure" \
+          # gcc stage1
+          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc-stage1-build" && cd "${BUILD_DIR}/gcc-stage1-build"
+          run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --target="${TARGET}" \
             --host="${HOST}" \
@@ -177,9 +183,11 @@ jobs:
             --with-mpfr=/usr \
             --with-mpc=/usr \
             --with-isl=/usr
-          make -j$(nproc) all-gcc
-          make install-gcc
 
+          run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
+          run "gcc stage1: install-gcc" make install-gcc
+
+          # set cross toolchain env
           export CC="${PREFIX}/bin/${TARGET}-gcc"
           export CXX="${PREFIX}/bin/${TARGET}-g++"
           export LD="${PREFIX}/bin/${TARGET}-ld"
@@ -187,22 +195,15 @@ jobs:
           export AS="${PREFIX}/bin/${TARGET}-as"
           export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
-          mkdir -p "${BUILD_DIR}/mingw-crt-build"
-          cd "${BUILD_DIR}/mingw-crt-build"
-          "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" \
-            --prefix="${PREFIX}/${TARGET}" \
-            --host="${TARGET}" \
-            --build="${BUILD}" \
-            --disable-multilib \
-            --with-sysroot="${PREFIX}/${TARGET}"
-          make -j$(nproc)
-          make install
+          # mingw-crt
+          run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
+          run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --disable-multilib --with-sysroot="${PREFIX}/${TARGET}"
+          run "mingw-crt: make" make -j$(nproc)
+          run "mingw-crt: install" make install
 
-          echo "构建gcc step 2"
-          unset CC CXX LD AR AS RANLIB
-          mkdir -p "${BUILD_DIR}/gcc-full-build"
-          cd "${BUILD_DIR}/gcc-full-build"
-          "${SOURCE_CODE_DIR}/gcc/configure" \
+          # gcc full build
+          run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build" && cd "${BUILD_DIR}/gcc-full-build"
+          run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --target="${TARGET}" \
             --host="${HOST}" \
@@ -226,8 +227,13 @@ jobs:
           export AS="${PREFIX}/bin/${TARGET}-as"
           export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
-          make -j$(nproc)
-          make install
+          run "gcc full: make" make -j$(nproc)
+          run "gcc full: install" make install
+
+          # 最后：生成聚合 summary 并打印路径（actions 后续可上传）
+          agg="$(aggregate_all_summaries)"
+          info "聚合摘要已写入：$agg"
+
 
       - name: verify cross compiler
         shell: bash
