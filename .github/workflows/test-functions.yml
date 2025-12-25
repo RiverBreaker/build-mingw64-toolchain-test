@@ -42,6 +42,7 @@ jobs:
 
           # optional tuning
           export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
           LOG_TAIL_LINES=80
@@ -125,6 +126,7 @@ jobs:
 
           # tuning
           export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
           LOG_TAIL_LINES=120

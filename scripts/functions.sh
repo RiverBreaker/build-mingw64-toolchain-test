@@ -9,7 +9,7 @@ set -o pipefail
 # -------------------- Configurable variables --------------------
 : "${LOG_DIR:=logs}"
 : "${LOG_TAIL_LINES:=50}"
-: "${ERROR_REGEX:=error:|fatal|undefined reference|collect2:|internal compiler error|segmentation fault|make: \\*\\*\\*|configure: error}"
+: "${ERROR_REGEX:=error:|fatal error|undefined reference|collect2:|internal compiler error|segmentation fault|make: \\*\\*\\*|configure: error}"
 : "${FATAL_REGEX:=internal compiler error|segmentation fault|undefined reference|internal compiler error:}"
 : "${IGNORE_REGEX:=array subscript 0 is outside array bounds}"
 : "${FAIL_ON_FATAL_IN_SUCCESS:=1}"
@@ -17,11 +17,29 @@ set -o pipefail
 mkdir -p "$LOG_DIR"
 
 # -------------------- Color / timestamp --------------------
-if [[ -t 1 ]]; then
-  RED='\033[31m'; YELLOW='\033[33m'; BLUE='\033[34m'; BOLD='\033[1m'; RESET='\033[0m'
-else
-  RED=''; YELLOW=''; BLUE=''; BOLD=''; RESET=''
+_use_color=0
+if [[ -n "${FORCE_COLOR:-}" ]]; then
+  _use_color=1
+elif [[ -t 1 ]]; then
+  _use_color=1
+elif [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  _use_color=1
 fi
+
+if [[ $_use_color -eq 1 ]]; then
+  RED=$'\033[31m'
+  YELLOW=$'\033[33m'
+  BLUE=$'\033[34m'
+  BOLD=$'\033[1m'
+  RESET=$'\033[0m'
+else
+  RED=''
+  YELLOW=''
+  BLUE=''
+  BOLD=''
+  RESET=''
+fi
+
 
 timestamp() { date +"%H:%M:%S"; }
 
