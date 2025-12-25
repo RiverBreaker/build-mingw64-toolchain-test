@@ -9,13 +9,9 @@ set -o pipefail
 # -------------------- Configurable variables --------------------
 : "${LOG_DIR:=logs}"
 : "${LOG_TAIL_LINES:=50}"
-# 全文认为“错误”的关键字（case-insensitive, extended regex）
 : "${ERROR_REGEX:=error:|fatal|undefined reference|collect2:|internal compiler error|segmentation fault|make: \\*\\*\\*|configure: error}"
-# 被认为“致命”的关键字（会导致脚本失败），可按需扩展
 : "${FATAL_REGEX:=internal compiler error|segmentation fault|undefined reference|internal compiler error:}"
-# 需要忽略的模式（比如已知的 mingw-w64 头文件误报），留空则不过滤
 : "${IGNORE_REGEX:=array subscript 0 is outside array bounds}"
-# 如果为 1，则在成功命令后仍会扫描 fatal patterns 并失败（保护性检查）
 : "${FAIL_ON_FATAL_IN_SUCCESS:=1}"
 
 mkdir -p "$LOG_DIR"
@@ -36,7 +32,6 @@ die()   { local msg="$1"; local code="${2:-1}"; echo -e "${RED}${BOLD}[$(timesta
 # -------------------- Internal helpers --------------------
 _sanitize() { echo "$*" | tr ' /:|()' '___' | tr -s '_' ; }
 
-# 返回匹配到的 error lines（带行号），应用 IGNORE_REGEX 过滤
 _extract_errors() {
   local logfile="$1"
   if [[ -z "$IGNORE_REGEX" ]]; then
@@ -46,7 +41,6 @@ _extract_errors() {
   fi
 }
 
-# 返回匹配到的 fatal lines（带行号），应用 IGNORE_REGEX 过滤
 _extract_fatals() {
   local logfile="$1"
   if [[ -z "$IGNORE_REGEX" ]]; then
@@ -56,7 +50,6 @@ _extract_fatals() {
   fi
 }
 
-# 给定 logfile 与某行号，打印上下文（前后 lines）
 _print_context() {
   local logfile="$1"; local lineno="$2"; local before="${3:-10}"; local after="${4:-20}"
   if [[ -z "$lineno" || ! "$lineno" =~ ^[0-9]+$ ]]; then
@@ -68,7 +61,6 @@ _print_context() {
   sed -n "${start},${end}p" "$logfile"
 }
 
-# 生成 error summary 文件（returns path）
 error_summary() {
   local logfile="$1"
   local summary="${logfile}.summary"
@@ -96,10 +88,8 @@ error_summary() {
   echo "$summary"
 }
 
-# 扫描 logfile，若发现 fatal，则打印并返回 1（失败），否则返回 0
 _scan_log_for_fatal_and_maybe_fail() {
   local logfile="$1"
-  # find fatal matches
   local fatals
   fatals="$(_extract_fatals "$logfile" | head -n 100)" || true
   if [[ -n "$fatals" ]]; then
@@ -107,13 +97,11 @@ _scan_log_for_fatal_and_maybe_fail() {
     echo "----------------------------------------" >&2
     echo "$fatals" >&2
     echo "----------------------------------------" >&2
-    # show context of first fatal
     local first_line
     first_line="$(echo "$fatals" | head -n1 | cut -d: -f1)"
     echo "首个致命错误上下文：" >&2
     _print_context "$logfile" "$first_line" 10 20 >&2
     echo "----------------------------------------" >&2
-    # produce summary
     local summ
     summ="$(error_summary "$logfile")"
     warn "致命错误摘要已写入：$summ"
@@ -122,7 +110,6 @@ _scan_log_for_fatal_and_maybe_fail() {
   return 0
 }
 
-# 扫描 logfile，若发现 error（非致命），打印摘要但不立即失败
 _scan_log_for_errors_and_warn() {
   local logfile="$1"
   local errs
@@ -138,7 +125,7 @@ _scan_log_for_errors_and_warn() {
   fi
 }
 
-# -------------------- Core wrapper: run --------------------
+# -------------------- 修正后的 Core wrapper: run --------------------
 run() {
   local desc="$1"; shift
   local logfile="$LOG_DIR/$(_sanitize "$desc").log"
@@ -148,9 +135,27 @@ run() {
     echo "----------------------------------------"
   } >"$logfile"
 
-  # Execute command, capture exit code
-  "$@" >>"$logfile" 2>&1
-  local rc=$?
+  # --- 临时禁用 errexit 与 ERR trap（保存并恢复） ---
+  local old_trap
+  old_trap="$(trap -p ERR || true)"   # 保存当前 ERR trap（如果有）
+  trap - ERR                           # 暂时清除 ERR trap
+  set +e                               # 关闭 errexit，确保后续命令失败可被捕获
+
+  # 执行命令并捕获返回码（不会让 shell 退出）
+  local rc=0
+  if ! "$@" >>"$logfile" 2>&1; then
+    rc=$?
+  else
+    rc=0
+  fi
+
+  # 恢复 ERR trap 与 errexit
+  if [[ -n "$old_trap" ]]; then
+    eval "$old_trap" || true
+  else
+    trap - ERR
+  fi
+  set -e
 
   if [[ $rc -ne 0 ]]; then
     echo >&2
@@ -158,7 +163,6 @@ run() {
     warn "退出码：$rc"
     echo "----------------------------------------" >&2
 
-    # 先把关键错误摘出来（尽量把真正的 error 摘出）
     local errors
     errors="$(_extract_errors "$logfile" | head -n 200)" || true
     if [[ -n "$errors" ]]; then
@@ -175,22 +179,18 @@ run() {
     die "完整日志见：$logfile ; 摘要见：$summary" "$rc"
   fi
 
-  # 如果命令返回 0，仍检查是否有 fatal patterns（防止 configure 等“吞失真”）
   if [[ "${FAIL_ON_FATAL_IN_SUCCESS:-0}" == "1" ]]; then
     if ! _scan_log_for_fatal_and_maybe_fail "$logfile"; then
       die "失败：在 $desc 日志中检测到致命关键字（尽管命令返回0）"
     fi
   fi
 
-  # 同时给出非致命 errors 的警告摘要（不退出）
   _scan_log_for_errors_and_warn "$logfile" || true
 
-  # 成功时只输出 info（轻量）
   info "完成：$desc"
 }
 
-# -------------------- Convenience: post_check --------------------
-# 可在单独步骤后手动调用，检测 logfile 中的问题（用于那些不是 run 包装的命令）
+# -------------------- post_check / aggregate / group / enable_strict_mode (unchanged) --------------------
 post_check() {
   local logfile="$1"
   if [[ ! -f "$logfile" ]]; then
@@ -198,17 +198,13 @@ post_check() {
     return 0
   fi
 
-  # 若有 fatals -> fail
   if ! _scan_log_for_fatal_and_maybe_fail "$logfile"; then
     die "post_check: 在日志中检测到致命关键字"
   fi
 
-  # 若有 errors -> warn + make summary
   _scan_log_for_errors_and_warn "$logfile" || true
 }
 
-# -------------------- Aggregate: scan all logs --------------------
-# 在 CI 结束时运行，生成所有日志的 summary 档案
 aggregate_all_summaries() {
   local out="$LOG_DIR/aggregate_summary-$(date +%Y%m%d-%H%M%S).txt"
   echo "AGGREGATE ERROR SUMMARY - $(date)" >"$out"
@@ -221,7 +217,6 @@ aggregate_all_summaries() {
   echo "$out"
 }
 
-# -------------------- GitHub Actions group support --------------------
 group() {
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::group::$*"
@@ -235,7 +230,6 @@ endgroup() {
   fi
 }
 
-# -------------------- Strict mode helper --------------------
 enable_strict_mode() {
   trap 'die "脚本在第 $LINENO 行异常退出"' ERR
   set -o errtrace
