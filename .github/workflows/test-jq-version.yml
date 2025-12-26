@@ -51,6 +51,7 @@ jobs:
           info "GCC 版本: ${GCC_VERSION}"
           run "获取组件版本信息" bash -lc "export_versions_from_json '${DEP_ISON_FILE}' '${GCC_VERSION}' env"
           sed -n '1,200p' "$GITHUB_ENV"
+          echo "binutils (sourced) = $binutils"
 
       - name: Print Dependencies Version
         shell: bash
