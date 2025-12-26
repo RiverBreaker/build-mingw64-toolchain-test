@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "GCC 版本: ${GCC_VERSION}"
-          run "获取组件版本信息" bash -lc "export_versions_from_json '${DEP_ISON_FILE}' '${GCC_VERSION}' env"
+          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" env
           if [[ -f "${GITHUB_ENV:-}" ]]; then
             # make all variables exported and source the file
             set -o allexport
