@@ -486,9 +486,16 @@ jobs:
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install
 
+          # ---------- final summary ----------
+          info "构建完成！"
+          info "安装目录：${PREFIX}"
+          ls -l "${PREFIX}/bin/"
+
           # final aggregate summary
           agg="$(aggregate_all_summaries)"
           info "聚合摘要已写入：$agg"
+
+
 
 
 
