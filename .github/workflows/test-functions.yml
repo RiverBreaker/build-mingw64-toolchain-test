@@ -363,12 +363,12 @@ jobs:
           export TARGET="x86_64-w64-mingw32"
           export PATH="${CROSS_PREFIX}/bin:${PATH}"
 
-          export CC="${PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${PREFIX}/bin/${TARGET}-g++"
-          export LD="${PREFIX}/bin/${TARGET}-ld"
-          export AR="${PREFIX}/bin/${TARGET}-ar"
-          export AS="${PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
+          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
+          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
+          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
 
           # ---------- binutils (native for mingw) ----------
           run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
@@ -476,13 +476,13 @@ jobs:
             --with-mpc="${PREFIX}" \
             --with-isl="${PREFIX}"
 
-          export CC="${PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${PREFIX}/bin/${TARGET}-g++"
-          export LD="${PREFIX}/bin/${TARGET}-ld"
-          export AR="${PREFIX}/bin/${TARGET}-ar"
-          export AS="${PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
-
+          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
+          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
+          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
+          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
+          
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install
 
