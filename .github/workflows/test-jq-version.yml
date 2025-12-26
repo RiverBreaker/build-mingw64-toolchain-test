@@ -57,7 +57,7 @@ jobs:
             source "$GITHUB_ENV"
             set +o allexport
           fi
-          sed -n '1,200p' "$GITHUB_ENV"
+          info "$GITHUB_ENV"
           echo "binutils (sourced) = $binutils"
 
       - name: Print Dependencies Version
