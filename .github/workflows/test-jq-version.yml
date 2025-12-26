@@ -70,3 +70,4 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "打印组件版本信息"
           echo "GCC Version: ${GCC_VERSION}"
+          echo "Binutils Version: ${binutils}"
