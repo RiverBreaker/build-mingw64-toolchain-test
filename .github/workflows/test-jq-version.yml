@@ -50,6 +50,7 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "GCC 版本: ${GCC_VERSION}"
           run "获取组件版本信息" bash -lc "export_versions_from_json '${DEP_ISON_FILE}' '${GCC_VERSION}' env"
+          sed -n '1,200p' "$GITHUB_ENV"
 
       - name: Print Dependencies Version
         shell: bash
@@ -61,4 +62,3 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "打印组件版本信息"
           echo "GCC Version: ${GCC_VERSION}"
-          sed -n '1,200p' "$GITHUB_ENV"
