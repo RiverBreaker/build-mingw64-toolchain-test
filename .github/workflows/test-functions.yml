@@ -244,6 +244,10 @@ jobs:
           run "gcc full: make" make -j$(nproc)
           run "gcc full: install" make install
 
+          info "交叉编译工具链构建完成！"
+          info "工具链已安装到：${PREFIX}"
+          run "清除构建目录以节省空间" rm -rf "${BUILD_DIR}"
+
           # 最后：生成聚合 summary 并打印路径（actions 后续可上传）
           agg="$(aggregate_all_summaries)"
           info "聚合摘要已写入：$agg"
@@ -482,7 +486,7 @@ jobs:
           export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
           export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
           export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
-          
+
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install
 
