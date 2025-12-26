@@ -254,3 +254,134 @@ enable_strict_mode() {
   trap 'die "脚本在第 $LINENO 行异常退出"' ERR
   set -o errtrace
 }
+
+
+# export_versions_from_json
+# Usage:
+#   export_versions_from_json <versions_json> [<gcc_version>] [mode] [outpath]
+# Params:
+#   versions_json - path to the JSON file (required)
+#   gcc_version   - desired GCC version key (optional; default: $GCC_VERSION or first key)
+#   mode          - one of: env | outputs | file   (default: env)
+#   outpath       - when mode=file, write selected JSON to this path (default: $GITHUB_WORKSPACE/versions.selected.json)
+#
+# Examples:
+#   export_versions_from_json scripts/versions.json 13.2.0 env
+#   export_versions_from_json scripts/versions.json 13.2.0 outputs
+#   export_versions_from_json scripts/versions.json 13.2.0 file /tmp/vers.json
+export_versions_from_json() {
+  local versions_file="${1:?versions_file is required}"
+  local requested_ver="${2:-${GCC_VERSION:-}}"
+  local mode="${3:-env}"
+  local outpath="${4:-${GITHUB_WORKSPACE:-.}/versions.selected.json}"
+
+  # tools
+  command -v jq >/dev/null 2>&1 || { echo "jq is required but not found" >&2; return 2; }
+  command -v base64 >/dev/null 2>&1 || { echo "base64 is required but not found" >&2; return 2; }
+
+  if [[ ! -f "$versions_file" ]]; then
+    echo "Versions file not found: $versions_file" >&2
+    return 3
+  fi
+
+  # find version
+  local ver
+  if [[ -n "$requested_ver" ]] && jq -e --arg v "$requested_ver" '.gcc_versions[$v]' "$versions_file" >/dev/null 2>&1; then
+    ver="$requested_ver"
+  else
+    if [[ -n "$requested_ver" ]]; then
+      echo "Warning: requested version '$requested_ver' not found in $versions_file; falling back to first available." >&2
+    fi
+    ver="$(jq -r '.gcc_versions | keys_unsorted[0]' "$versions_file")"
+    if [[ -z "$ver" || "$ver" == "null" ]]; then
+      echo "Error: no gcc_versions entries found in $versions_file" >&2
+      return 4
+    fi
+  fi
+
+  # extract object for selected version into a temp file
+  local tmp selected_json
+  tmp="$(mktemp)"
+  jq -r --arg v "$ver" '.gcc_versions[$v]' "$versions_file" >"$tmp" || { echo "Failed to extract version object" >&2; rm -f "$tmp"; return 5; }
+
+  # Write selected JSON if requested (mode=file or always write to outpath)
+  if [[ "$mode" == "file" ]]; then
+    mkdir -p "$(dirname "$outpath")" 2>/dev/null || true
+    mv "$tmp" "$outpath"
+    echo "WROTE_SELECTED_JSON=${outpath}" >&2
+    # If running in GitHub Actions, export path as step output
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+      echo "versions_file=${outpath}" >>"$GITHUB_OUTPUT"
+      echo "gcc-version=${ver}" >>"$GITHUB_OUTPUT"
+    fi
+    return 0
+  fi
+
+  # iterate entries robustly (use base64 to avoid issues with special chars)
+  # jq -> base64 of each entry ({"key":..,"value":..})
+  jq -c -r 'to_entries[] | @base64' "$tmp" | while IFS= read -r entry_b64; do
+    # decode
+    local entry_json key raw_val norm_key
+    entry_json="$(echo "$entry_b64" | base64 --decode)"
+    key="$(echo "$entry_json" | jq -r '.key')"
+    raw_val="$(echo "$entry_json" | jq -r '.value')"
+
+    # normalize key => valid env var: non-alnum => _, to lowercase
+    norm_key="$(echo "$key" | sed 's/[^A-Za-z0-9_]/_/g' | tr '[:upper:]' '[:lower:]')"
+
+    case "$mode" in
+      env)
+        # write to GITHUB_ENV if present, else export in current shell
+        if [[ -n "${GITHUB_ENV:-}" ]]; then
+          printf '%s=%s\n' "$norm_key" "$raw_val" >>"$GITHUB_ENV"
+        else
+          # fallback: export for the current shell (note: won't persist across separate steps)
+          export "$norm_key"="$raw_val"
+        fi
+        ;;
+      outputs)
+        # write each as a step output: name=value
+        # GitHub Actions requires "name=value" appended to $GITHUB_OUTPUT
+        if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+          # ensure no literal newlines in value for GITHUB_OUTPUT (versions usually don't have them)
+          # If multiline occurs, we escape it as json here
+          if [[ "$raw_val" == *$'\n'* ]]; then
+            # base64-encode multiline values to avoid truncation; consumer must decode
+            b64="$(printf '%s' "$raw_val" | base64 -w0)"
+            printf '%s=%s\n' "$norm_key" "$b64" >>"$GITHUB_OUTPUT"
+            # also emit a companion var telling it's base64 encoded
+            printf '%s__b64=1\n' "$norm_key" >>"$GITHUB_OUTPUT"
+          else
+            printf '%s=%s\n' "$norm_key" "$raw_val" >>"$GITHUB_OUTPUT"
+          fi
+        else
+          # fallback: print to stdout in "key=value" form
+          printf '%s=%s\n' "$norm_key" "$raw_val"
+        fi
+        ;;
+      *)
+        echo "Unknown mode: $mode (supported: env, outputs, file)" >&2
+        rm -f "$tmp"
+        return 6
+        ;;
+    esac
+  done
+
+  # also export gcc-version for convenience
+  if [[ "$mode" == "env" ]]; then
+    if [[ -n "${GITHUB_ENV:-}" ]]; then
+      echo "gcc_version=${ver}" >>"$GITHUB_ENV"
+    else
+      export gcc_version="$ver"
+    fi
+  elif [[ "$mode" == "outputs" ]]; then
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+      echo "gcc-version=${ver}" >>"$GITHUB_OUTPUT"
+    else
+      echo "gcc-version=${ver}"
+    fi
+  fi
+
+  rm -f "$tmp" 2>/dev/null || true
+  return 0
+}

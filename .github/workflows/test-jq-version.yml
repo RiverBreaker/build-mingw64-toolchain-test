@@ -1,0 +1,63 @@
+name: Test get version of dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc-version:
+        description: 'GCC Version'
+        required: true
+        default: '13.2.0'
+
+jobs:
+  build-cross:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install System dependencies
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          FORCE_COLOR: '1'
+        run: |
+          set -euo pipefail
+
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          mkdir -p "${LOG_DIR}"
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+
+          info "开始安装系统依赖（apt-get）"
+
+          run "apt-get update" sudo apt-get update
+
+          pkgs="git wget tar jq base64"
+
+          run "apt-get install packages" bash -lc 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y '"$pkgs"
+
+          info "系统依赖安装完成"
+
+      - name: Get Dependencies Version
+        id: get-versions
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+          DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          info "GCC 版本: ${GCC_VERSION}"
+          run "获取组件版本信息" bash -lc "export_versions_from_json '${DEP_ISON_FILE}' '${GCC_VERSION}' env"
+
+      - name: Print Dependencies Version
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          info "打印组件版本信息"
+          run "打印 GCC 版本" bash -lc 'echo "GCC Version: ${GCC_VERSION}"'
+          run "打印 Binutils 版本" bash -lc 'sed -n '1,200p' "$GITHUB_ENV"'

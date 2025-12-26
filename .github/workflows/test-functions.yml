@@ -1,4 +1,4 @@
-name: Test Build Mingw-w64 on Ubuntu(1)
+name: Test Build Mingw-w64 on Ubuntu(2)
 
 on:
   workflow_dispatch:
@@ -37,6 +37,19 @@ jobs:
           run "apt-get install packages" bash -lc 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y '"$pkgs"
 
           info "系统依赖安装完成"
+
+      - name: Get Dependencies Version
+        id: get-versions
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+          DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          info "GCC 版本: ${GCC_VERSION}"
+
 
       - name: Download Source Code
         shell: bash
