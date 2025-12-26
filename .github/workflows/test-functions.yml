@@ -347,13 +347,6 @@ jobs:
           LOG_TAIL_LINES=300
           FAIL_ON_FATAL_IN_SUCCESS=1
 
-          export CC="${PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${PREFIX}/bin/${TARGET}-g++"
-          export LD="${PREFIX}/bin/${TARGET}-ld"
-          export AR="${PREFIX}/bin/${TARGET}-ar"
-          export AS="${PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
-
           # prepare top-level dirs
           for d in "${BUILD_DIR}" "${PREFIX}"; do
             if [ -d "${d}" ]; then
@@ -369,6 +362,13 @@ jobs:
           export HOST="x86_64-w64-mingw32"
           export TARGET="x86_64-w64-mingw32"
           export PATH="${CROSS_PREFIX}/bin:${PATH}"
+
+          export CC="${PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${PREFIX}/bin/${TARGET}-g++"
+          export LD="${PREFIX}/bin/${TARGET}-ld"
+          export AR="${PREFIX}/bin/${TARGET}-ar"
+          export AS="${PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
           # ---------- binutils (native for mingw) ----------
           run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
