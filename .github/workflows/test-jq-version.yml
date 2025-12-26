@@ -50,6 +50,13 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "GCC 版本: ${GCC_VERSION}"
           run "获取组件版本信息" bash -lc "export_versions_from_json '${DEP_ISON_FILE}' '${GCC_VERSION}' env"
+          if [[ -f "${GITHUB_ENV:-}" ]]; then
+            # make all variables exported and source the file
+            set -o allexport
+            # shellcheck disable=SC1090
+            source "$GITHUB_ENV"
+            set +o allexport
+          fi
           sed -n '1,200p' "$GITHUB_ENV"
           echo "binutils (sourced) = $binutils"
 
