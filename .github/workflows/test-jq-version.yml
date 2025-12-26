@@ -55,6 +55,7 @@ jobs:
         shell: bash
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
         run: |
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
