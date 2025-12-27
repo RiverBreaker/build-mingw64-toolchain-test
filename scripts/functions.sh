@@ -391,28 +391,33 @@ export_versions_from_json() {
 
 # 基本 curl 下载（带重试、断点续传、原子 .part 临时文件）
 _curl_download() {
-  local url="$1" out="$2" tmp="${out}.part"
+  local url="$1" out="$2" logf="$3" tmp="${out}.part"
   mkdir -p "$(dirname "$out")"
-  # -f fail on HTTP errors; -L follow redirects; -C - resume; -sS show errors; retry policy
-  if curl --fail -L --retry 3 --retry-delay 2 -C - -sS -o "$tmp" "$url"; then
+  echo "TRY: $url" >>"$logf"
+  # curl 的 stderr 会被追加到 logfile，以便排查（--fail 保证 404 返回非0）
+  if curl --fail -L --retry 3 --retry-delay 2 -C - -sS "$url" -o "$tmp" 2>>"$logf"; then
     mv "$tmp" "$out"
-    printf '%s' "$out"
+    echo "OK: $out" >>"$logf"
     return 0
   else
+    # 保证未留下残留.part
     rm -f "$tmp"
+    echo "FAIL: $url (curl failed, see above)" >>"$logf"
     return 1
   fi
 }
 
-# 尝试读取包的版本：尝试小写、全大写、带/不带 _version 后缀的几种环境变量名
+# ----- get_version：兼容不同命名（处理 '-' -> '_'） -----
 get_version() {
   local pkg="$1"
-  local lc uc var val
+  local lc uc key key2 key2_uc val
   lc="$(echo "$pkg" | tr '[:upper:]' '[:lower:]')"
   uc="$(echo "$pkg" | tr '[:lower:]' '[:upper:]')"
+  key2="${lc//-/_}"
+  key2_uc="${uc//-/_}"
 
-  for var in "$lc" "$uc" "${lc}_version" "${uc}_VERSION"; do
-    val="${!var:-}"
+  for key in "$lc" "$key2" "$uc" "$key2_uc" "${lc}_version" "${key2}_version" "${uc}_VERSION" "${key2_uc}_VERSION"; do
+    val="${!key:-}"
     if [[ -n "$val" ]]; then
       printf '%s' "$val"
       return 0
@@ -421,110 +426,105 @@ get_version() {
   return 1
 }
 
-# sqlite 变为 autoconf 数字（简单去点，必要时可替换为更复杂逻辑）
+# ----- sqlite digits: major*1000000 + minor*10000 + patch*100 (e.g. 3.42.0 -> 3420000) -----
 sqlite_digits() {
   local v="$1"
-  printf '%s' "${v//./}"
+  # split by dots
+  IFS=. read -r maj min pat <<<"$v"
+  maj=${maj:-0}; min=${min:-0}; pat=${pat:-0}
+  # numeric: maj*1_000_000 + min*10_000 + pat*100
+  printf '%d' $(( maj * 1000000 + min * 10000 + pat * 100 ))
 }
 
-# 通用后缀尝试顺序（你可以增/删）
+# 扩展优先级
 _GNU_EXTS=(tar.xz tar.gz tgz tar.bz2 tar)
 
-# 映射每个包到其在 ftp 或站点的相对路径规则
-# key -> template，template 支持 %s for version and %p for package name if needed.
-# 默认会尝试: ${GNU_BASE_URL}/${pkg}/${pkg}-${ver}.${ext}
+# 模板（可扩展）
 declare -A PKG_TEMPLATES
-# 常见 GNU 包（可以由统一模板处理，但写出来便于未来特化）
 for p in readline ncurses make gdb gdbm libgdbm binutils libiconv libffi; do
   PKG_TEMPLATES["$p"]='{{GNU}}/'"$p"'/'"$p"'-%s.%s'
 done
-# 特殊/非 GNU 或需要不同 base 的包
 PKG_TEMPLATES["gcc"]='{{GNU}}/gcc/gcc-%s.%s'
 PKG_TEMPLATES["zlib"]='https://zlib.net/fossils/zlib-%s.%s'
-PKG_TEMPLATES["mingw-w64"]='{{MINGW}}/v%s.%s'   # we'll try with .tar.gz/.tar.xz etc
-PKG_TEMPLATES["libgnurx"]='{{GNURX_FALLBACK}}'   # special handling
-PKG_TEMPLATES["expat"]='{{EXPAT_RELEASE}}'      # special handling
+PKG_TEMPLATES["mingw-w64"]='{{MINGW}}/v%s.%s'
+PKG_TEMPLATES["libgnurx"]='{{GNURX_FALLBACK}}'
+PKG_TEMPLATES["expat"]='{{EXPAT_RELEASE}}'
 PKG_TEMPLATES["python"]='https://www.python.org/ftp/python/%s/Python-%s.%s'
-PKG_TEMPLATES["sqlite"]='{{SQLITE_AUTOCONF}}'   # special handling
+PKG_TEMPLATES["sqlite"]='{{SQLITE_AUTOCONF}}'
 PKG_TEMPLATES["openssl"]='https://www.openssl.org/source/openssl-%s.%s'
 PKG_TEMPLATES["xz"]='https://tukaani.org/xz/xz-%s.%s'
 PKG_TEMPLATES["bzip2"]='https://sourceware.org/pub/bzip2/bzip2-%s.%s'
 PKG_TEMPLATES["tcl"]='https://prdownloads.sourceforge.net/tcl/tcl%s-src.%s'
 PKG_TEMPLATES["tk"]='https://prdownloads.sourceforge.net/tcl/tk%s-src.%s'
 
-# 主下载函数：download_by_name <pkg>
-# 输出：下载到的文件路径（stdout）或非 0 退出
+# ----- download_by_name：尝试并把每次尝试与错误写入指定 log 文件 -----
+# Usage: download_by_name <pkg>
+#   on success: prints downloaded path to stdout
+#   on failure: prints nothing and returns non-zero (errors logged to logfile)
 download_by_name() {
   local pkg="$1"
-  local ver url out try ext path template
+  local ver template tmpl url out try ext digits logf
+  logf="${LOG_DIR}/下载_${pkg}.log"
 
   if ! ver="$(get_version "$pkg")"; then
+    echo "ERROR: version for '${pkg}' not found in environment" >>"$logf"
     echo "ERROR: version for '${pkg}' not found in environment" >&2
     return 2
   fi
 
   template="${PKG_TEMPLATES[$pkg]:-}"
 
-  # 特殊包的处理
+  echo "DOWNLOAD START: ${pkg} ${ver}" >"$logf"
+
   case "$pkg" in
     libgnurx)
-      # 尝试几个常见来源
       out="${SOURCE_CODE_DIR}/libgnurx-${ver}.tar.gz"
       try="https://github.com/TimothyGu/libgnurx/archive/refs/tags/v${ver}.tar.gz"
-      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
       try="https://github.com/TimothyGu/libgnurx/archive/refs/tags/${ver}.tar.gz"
-      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
-      # 如果需要，可添加更多来源
+      if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
+      echo "ERROR: libgnurx download failed for ${ver}" >>"$logf"
       echo "ERROR: libgnurx download failed for ${ver}" >&2
       return 1
       ;;
     expat)
-      # GitHub releases often use tag R_2_5_0 for 2.5.0
       local tag="R_${ver//./_}"
       out="${SOURCE_CODE_DIR}/expat-${ver}.tar.gz"
       try="https://github.com/libexpat/libexpat/releases/download/${tag}/expat-${ver}.tar.gz"
-      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
+      echo "ERROR: expat download failed for ${ver}" >>"$logf"
       echo "ERROR: expat download failed for ${ver}" >&2
       return 1
       ;;
     sqlite)
-      # sqlite-autoconf uses digits and year path — keep template simple but build URL
-      local digits
       digits="$(sqlite_digits "$ver")"
-      # 这里用 2024 作为例子；如果想动态可把 YEAR 作为变量
       out="${SOURCE_CODE_DIR}/sqlite-autoconf-${digits}-0.tar.gz"
+      try="https://www.sqlite.org/2023/sqlite-autoconf-${digits}-0.tar.gz"
+      # try 2023 path then 2024 as fallback
+      if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
       try="https://www.sqlite.org/2024/sqlite-autoconf-${digits}-0.tar.gz"
-      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
+      echo "ERROR: sqlite download failed for ${ver}" >>"$logf"
       echo "ERROR: sqlite download failed for ${ver}" >&2
       return 1
       ;;
     mingw-w64)
-      # try with common compression extensions
       for ext in "${_GNU_EXTS[@]}"; do
         out="${SOURCE_CODE_DIR}/mingw-w64-v${ver}.${ext}"
         try="${MINGW_BASE_URL}/v${ver}.${ext}"
-        if _curl_download "$try" "$out"; then printf '%s' "$out" && return 0; fi
-        # try without v prefix
+        if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
         try="${MINGW_BASE_URL}/${ver}.${ext}"
-        if _curl_download "$try" "$out"; then printf '%s' "$out" && return 0; fi
+        if _curl_download "$try" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
       done
+      echo "ERROR: mingw-w64 download failed for ${ver}" >>"$logf"
       echo "ERROR: mingw-w64 download failed for ${ver}" >&2
       return 1
       ;;
     *)
-      # 通用 GNU 模式或模板存在时走模板流程
       if [[ -n "$template" ]]; then
-        # expand placeholders {{GNU}} {{MINGW}} etc.
-        local tmpl="${template//\{\{GNU\}\}/${GNU_BASE_URL}}"
+        tmpl="${template//\{\{GNU\}\}/${GNU_BASE_URL}}"
         tmpl="${tmpl//\{\{MINGW\}\}/${MINGW_BASE_URL}}"
-        tmpl="${tmpl//\{\{GNURX_FALLBACK\}\}/dummy}"    # handled earlier
-        tmpl="${tmpl//\{\{EXPAT_RELEASE\}\}/dummy}"
-        tmpl="${tmpl//\{\{SQLITE_AUTOCONF\}\}/dummy}"
-
-        # try common extensions
         for ext in "${_GNU_EXTS[@]}"; do
-          # template may expect two %s (version, ext) or one %s ext; handle both
-          # if template contains two %s use printf tmpl ver ext
           if [[ "$(grep -o '%s' <<<"$tmpl" | wc -l)" -ge 2 ]]; then
             url="$(printf "$tmpl" "$ver" "$ext")"
             out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
@@ -532,23 +532,18 @@ download_by_name() {
             url="$(printf "$tmpl" "$ver")"
             out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
           fi
-          if _curl_download "$url" "$out"; then
-            printf '%s' "$out"
-            return 0
-          fi
+          if _curl_download "$url" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
         done
       fi
 
-      # fallback：尝试按最常见的 GNU 目录结构构造 URL（pkg/pkg-ver.ext）
+      # fallback common GNU urls
       for ext in "${_GNU_EXTS[@]}"; do
         url="${GNU_BASE_URL}/${pkg}/${pkg}-${ver}.${ext}"
         out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
-        if _curl_download "$url" "$out"; then
-          printf '%s' "$out"
-          return 0
-        fi
+        if _curl_download "$url" "$out" "$logf"; then printf '%s' "$out"; return 0; fi
       done
 
+      echo "ERROR: download failed for ${pkg} ${ver} (tried common GNU urls)" >>"$logf"
       echo "ERROR: download failed for ${pkg} ${ver} (tried common GNU urls)" >&2
       return 1
       ;;
