@@ -71,6 +71,7 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
+          export -f _curl_download get_version sqlite_digits download_by_name
 
           pkgs=( gcc binutils mingw-w64 libiconv zlib libgnurx bzip2 make termcap libffi expat ncurses readline gdbm openssl tcl tk python xz sqlite gdb )
           for pkg in "${pkgs[@]}"; do
