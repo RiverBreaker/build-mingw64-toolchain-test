@@ -68,6 +68,23 @@ jobs:
         run: |
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          info "打印组件版本信息"
-          echo "GCC Version: ${GCC_VERSION}"
-          echo "Binutils Version: ${binutils}"
+
+          # optional tuning
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          export FORCE_COLOR=1
+          mkdir -p "${LOG_DIR}"
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=80
+          FAIL_ON_FATAL_IN_SUCCESS=1
+
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+
+          pkgs=( gcc binutils mingw-w64 libiconv zlib libgnurx bzip2 make termcap libffi expat ncurses readline gdbm openssl tcl tk python xz sqlite gdb )
+          for pkg in "${pkgs[@]}"; do
+            run "下载 ${pkg}" bash -lc "download_by_name ${pkg} > \"${GITHUB_WORKSPACE}/logs/download_${pkg}.path\" || exit 1"
+            # 读取路径（如果需要在同步脚本里进一步处理）
+            dlpath="$(cat "${GITHUB_WORKSPACE}/logs/download_${pkg}.path" 2>/dev/null || true)"
+            info "Downloaded ${pkg} -> ${dlpath:-<missing>}"
+          done
+
+          ls -lah "${SOURCE_CODE_DIR}"

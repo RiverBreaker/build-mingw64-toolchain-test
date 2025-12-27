@@ -319,7 +319,7 @@ export_versions_from_json() {
 
   # iterate entries robustly (use base64 to avoid issues with special chars)
   # jq -> base64 of each entry ({"key":..,"value":..})
-  jq -c -r 'to_entries[] | @base64' "$tmp" | while IFS= read -r entry_b64; do
+  while IFS= read -r entry_b64; do
     # decode
     local entry_json key raw_val norm_key
     entry_json="$(echo "$entry_b64" | base64 --decode)"
@@ -327,7 +327,7 @@ export_versions_from_json() {
     raw_val="$(echo "$entry_json" | jq -r '.value')"
 
     # normalize key => valid env var: non-alnum => _, to lowercase
-    norm_key="$(echo "$key" | sed 's/[^A-Za-z0-9_]/_/g' | tr '[:upper:]' '[:lower:]')"
+    norm_key="$(echo "$key" | sed 's/[^A-Za-z0-9_]/_/g' | tr '[:lower:]' '[:upper:]')"
 
     case "$mode" in
       env)
@@ -365,7 +365,7 @@ export_versions_from_json() {
         return 6
         ;;
     esac
-  done
+  done < <(jq -c -r 'to_entries[] | @base64' "$tmp")
 
   # also export gcc-version for convenience
   if [[ "$mode" == "env" ]]; then
@@ -384,4 +384,173 @@ export_versions_from_json() {
 
   rm -f "$tmp" 2>/dev/null || true
   return 0
+}
+
+
+# ----------------- 通用下载/URL 组装函数（放在 step 内） -----------------
+
+# 基本 curl 下载（带重试、断点续传、原子 .part 临时文件）
+_curl_download() {
+  local url="$1" out="$2" tmp="${out}.part"
+  mkdir -p "$(dirname "$out")"
+  # -f fail on HTTP errors; -L follow redirects; -C - resume; -sS show errors; retry policy
+  if curl --fail -L --retry 3 --retry-delay 2 -C - -sS -o "$tmp" "$url"; then
+    mv "$tmp" "$out"
+    printf '%s' "$out"
+    return 0
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+# 尝试读取包的版本：尝试小写、全大写、带/不带 _version 后缀的几种环境变量名
+get_version() {
+  local pkg="$1"
+  local lc uc var val
+  lc="$(echo "$pkg" | tr '[:upper:]' '[:lower:]')"
+  uc="$(echo "$pkg" | tr '[:lower:]' '[:upper:]')"
+
+  for var in "$lc" "$uc" "${lc}_version" "${uc}_VERSION"; do
+    val="${!var:-}"
+    if [[ -n "$val" ]]; then
+      printf '%s' "$val"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# sqlite 变为 autoconf 数字（简单去点，必要时可替换为更复杂逻辑）
+sqlite_digits() {
+  local v="$1"
+  printf '%s' "${v//./}"
+}
+
+# 通用后缀尝试顺序（你可以增/删）
+_GNU_EXTS=(tar.xz tar.gz tgz tar.bz2 tar)
+
+# 映射每个包到其在 ftp 或站点的相对路径规则
+# key -> template，template 支持 %s for version and %p for package name if needed.
+# 默认会尝试: ${GNU_BASE_URL}/${pkg}/${pkg}-${ver}.${ext}
+declare -A PKG_TEMPLATES
+# 常见 GNU 包（可以由统一模板处理，但写出来便于未来特化）
+for p in readline ncurses make gdb gdbm libgdbm binutils libiconv libffi; do
+  PKG_TEMPLATES["$p"]='{{GNU}}/'"$p"'/'"$p"'-%s.%s'
+done
+# 特殊/非 GNU 或需要不同 base 的包
+PKG_TEMPLATES["gcc"]='{{GNU}}/gcc/gcc-%s.%s'
+PKG_TEMPLATES["zlib"]='https://zlib.net/fossils/zlib-%s.%s'
+PKG_TEMPLATES["mingw-w64"]='{{MINGW}}/v%s.%s'   # we'll try with .tar.gz/.tar.xz etc
+PKG_TEMPLATES["libgnurx"]='{{GNURX_FALLBACK}}'   # special handling
+PKG_TEMPLATES["expat"]='{{EXPAT_RELEASE}}'      # special handling
+PKG_TEMPLATES["python"]='https://www.python.org/ftp/python/%s/Python-%s.%s'
+PKG_TEMPLATES["sqlite"]='{{SQLITE_AUTOCONF}}'   # special handling
+PKG_TEMPLATES["openssl"]='https://www.openssl.org/source/openssl-%s.%s'
+PKG_TEMPLATES["xz"]='https://tukaani.org/xz/xz-%s.%s'
+PKG_TEMPLATES["bzip2"]='https://sourceware.org/pub/bzip2/bzip2-%s.%s'
+PKG_TEMPLATES["tcl"]='https://prdownloads.sourceforge.net/tcl/tcl%s-src.%s'
+PKG_TEMPLATES["tk"]='https://prdownloads.sourceforge.net/tcl/tk%s-src.%s'
+
+# 主下载函数：download_by_name <pkg>
+# 输出：下载到的文件路径（stdout）或非 0 退出
+download_by_name() {
+  local pkg="$1"
+  local ver url out try ext path template
+
+  if ! ver="$(get_version "$pkg")"; then
+    echo "ERROR: version for '${pkg}' not found in environment" >&2
+    return 2
+  fi
+
+  template="${PKG_TEMPLATES[$pkg]:-}"
+
+  # 特殊包的处理
+  case "$pkg" in
+    libgnurx)
+      # 尝试几个常见来源
+      out="${SOURCE_CODE_DIR}/libgnurx-${ver}.tar.gz"
+      try="https://github.com/TimothyGu/libgnurx/archive/refs/tags/v${ver}.tar.gz"
+      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      try="https://github.com/TimothyGu/libgnurx/archive/refs/tags/${ver}.tar.gz"
+      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      # 如果需要，可添加更多来源
+      echo "ERROR: libgnurx download failed for ${ver}" >&2
+      return 1
+      ;;
+    expat)
+      # GitHub releases often use tag R_2_5_0 for 2.5.0
+      local tag="R_${ver//./_}"
+      out="${SOURCE_CODE_DIR}/expat-${ver}.tar.gz"
+      try="https://github.com/libexpat/libexpat/releases/download/${tag}/expat-${ver}.tar.gz"
+      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      echo "ERROR: expat download failed for ${ver}" >&2
+      return 1
+      ;;
+    sqlite)
+      # sqlite-autoconf uses digits and year path — keep template simple but build URL
+      local digits
+      digits="$(sqlite_digits "$ver")"
+      # 这里用 2024 作为例子；如果想动态可把 YEAR 作为变量
+      out="${SOURCE_CODE_DIR}/sqlite-autoconf-${digits}-0.tar.gz"
+      try="https://www.sqlite.org/2024/sqlite-autoconf-${digits}-0.tar.gz"
+      _curl_download "$try" "$out" && printf '%s' "$out" && return 0
+      echo "ERROR: sqlite download failed for ${ver}" >&2
+      return 1
+      ;;
+    mingw-w64)
+      # try with common compression extensions
+      for ext in "${_GNU_EXTS[@]}"; do
+        out="${SOURCE_CODE_DIR}/mingw-w64-v${ver}.${ext}"
+        try="${MINGW_BASE_URL}/v${ver}.${ext}"
+        if _curl_download "$try" "$out"; then printf '%s' "$out" && return 0; fi
+        # try without v prefix
+        try="${MINGW_BASE_URL}/${ver}.${ext}"
+        if _curl_download "$try" "$out"; then printf '%s' "$out" && return 0; fi
+      done
+      echo "ERROR: mingw-w64 download failed for ${ver}" >&2
+      return 1
+      ;;
+    *)
+      # 通用 GNU 模式或模板存在时走模板流程
+      if [[ -n "$template" ]]; then
+        # expand placeholders {{GNU}} {{MINGW}} etc.
+        local tmpl="${template//\{\{GNU\}\}/${GNU_BASE_URL}}"
+        tmpl="${tmpl//\{\{MINGW\}\}/${MINGW_BASE_URL}}"
+        tmpl="${tmpl//\{\{GNURX_FALLBACK\}\}/dummy}"    # handled earlier
+        tmpl="${tmpl//\{\{EXPAT_RELEASE\}\}/dummy}"
+        tmpl="${tmpl//\{\{SQLITE_AUTOCONF\}\}/dummy}"
+
+        # try common extensions
+        for ext in "${_GNU_EXTS[@]}"; do
+          # template may expect two %s (version, ext) or one %s ext; handle both
+          # if template contains two %s use printf tmpl ver ext
+          if [[ "$(grep -o '%s' <<<"$tmpl" | wc -l)" -ge 2 ]]; then
+            url="$(printf "$tmpl" "$ver" "$ext")"
+            out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
+          else
+            url="$(printf "$tmpl" "$ver")"
+            out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
+          fi
+          if _curl_download "$url" "$out"; then
+            printf '%s' "$out"
+            return 0
+          fi
+        done
+      fi
+
+      # fallback：尝试按最常见的 GNU 目录结构构造 URL（pkg/pkg-ver.ext）
+      for ext in "${_GNU_EXTS[@]}"; do
+        url="${GNU_BASE_URL}/${pkg}/${pkg}-${ver}.${ext}"
+        out="${SOURCE_CODE_DIR}/${pkg}-${ver}.${ext}"
+        if _curl_download "$url" "$out"; then
+          printf '%s' "$out"
+          return 0
+        fi
+      done
+
+      echo "ERROR: download failed for ${pkg} ${ver} (tried common GNU urls)" >&2
+      return 1
+      ;;
+  esac
 }
