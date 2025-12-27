@@ -60,6 +60,9 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
+          export MINGW_BASE_URL="https://github.com/mingw-w64/mingw-w64/archive/refs/tags"
+          export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+
           # optional tuning
           export LOG_DIR="${GITHUB_WORKSPACE}/logs"
           export FORCE_COLOR=1
