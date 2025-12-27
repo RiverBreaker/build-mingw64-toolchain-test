@@ -69,6 +69,8 @@ jobs:
           FAIL_ON_FATAL_IN_SUCCESS=1
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
 
           pkgs=( gcc binutils mingw-w64 libiconv zlib libgnurx bzip2 make termcap libffi expat ncurses readline gdbm openssl tcl tk python xz sqlite gdb )
           for pkg in "${pkgs[@]}"; do
