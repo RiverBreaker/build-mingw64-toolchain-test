@@ -405,6 +405,22 @@ curl_download() {
 #  curl_download "${GNU_BASE_URL}/${d}/${d}-${ver}.tar.gz" "$output_path"
 # done
 
+# 错误处理函数
+safe_rm() {
+    if [[ -e "$1" ]]; then
+        info "删除: $1"
+        if ! rm -rf "$1"; then
+            cleanup_and_die "删除失败: $1"
+        fi
+    fi
+}
+
+# 清理函数
+cleanup_and_die() {
+    rm -rf "$tmp_dir"
+    die "${1:-操作失败}"
+}
+
 archive_extract() {
   local pkg_name="$1"
   local archive="$2"
@@ -439,6 +455,47 @@ archive_extract() {
     rm -rf "$tmp_dir"
     return 1
   }
+  if [[ "${pkg_name}" == "gcc" ]]; then
+    local dep_libs=("gmp" "mpfr" "mpc" "isl")
+
+    # 进入GCC目录
+    cd "${output_dir}/${pkg_name}" || cleanup_and_die "无法进入目录"
+
+    # 下载依赖
+    if ! ./contrib/download_prerequisites --directory="${output_dir}"; then
+        cleanup_and_die "下载 GCC 先决条件失败"
+    fi
+
+    # 清理旧依赖目录
+    for d in "${dep_libs[@]}"; do
+        safe_rm "${output_dir}/${pkg_name}/${d}"
+    done
+
+    # 返回并处理依赖
+    cd "${output_dir}" || cleanup_and_die "无法返回目录"
+
+    for p in "${dep_libs[@]}"; do
+        # 删除压缩包
+        for f in "${output_dir}/${p}-"*.tar.*; do
+            [[ -f "$f" ]] && safe_rm "$f"
+        done
+
+        # 重命名目录
+        shopt -s nullglob
+        local dirs=("${output_dir}/${p}-"*/)
+        shopt -u nullglob
+
+        if [[ ${#dirs[@]} -eq 0 ]]; then
+            warn "未找到 ${p} 目录，跳过"
+            continue
+        fi
+
+        # 只处理第一个目录
+        if ! mv "${dirs[0]}" "${output_dir}/${p}"; then
+            cleanup_and_die "重命名 ${p} 失败"
+        fi
+    done
+  fi
 
   rm -rf "$tmp_dir"
   rm -f "$archive"
