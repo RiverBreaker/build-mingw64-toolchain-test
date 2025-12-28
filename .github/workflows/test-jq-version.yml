@@ -85,7 +85,7 @@ jobs:
               echo "下载${p} 源码版本: ${version}"
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
               echo "解压${p} 源码版本: ${GCC_VERSION}"
-              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
             else
               ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
               echo "下载${p} 源码版本: ${!ver}"
