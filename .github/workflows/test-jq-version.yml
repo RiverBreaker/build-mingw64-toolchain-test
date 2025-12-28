@@ -140,4 +140,5 @@ jobs:
             echo "解压${p} 源码版本: ${ver}"
             run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
+          ls -lh "${SOURCE_CODE_DIR}"
 
