@@ -116,7 +116,8 @@ jobs:
                 project_name="cpython"
                 ;;
               openssl|sqlite|libffi|pkgconf)
-                ver="${!{p^^}}"
+                pkg_name=${p^^}
+                ver="${!pkg_name}"
                 github_author="${p}"
                 project_name="${p}"
                 ;;
