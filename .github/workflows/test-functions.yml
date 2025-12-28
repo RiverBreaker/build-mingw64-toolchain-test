@@ -32,7 +32,7 @@ jobs:
 
           run "apt-get update" sudo apt-get update
 
-          pkgs="build-essential autoconf automake libtool pkg-config flex bison texinfo lzma-dev zlib1g-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev git wget tar xz-utils wine"
+          pkgs="build-essential autoconf automake libtool pkg-config flex bison texinfo lzma-dev zlib1g-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev git wget tar xz-utils jq base64"
 
           run "apt-get install packages" bash -lc 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y '"$pkgs"
 
@@ -56,138 +56,88 @@ jobs:
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+          LOG_DIR: "${{ github.workspace }}/logs"
         run: |
           set -euo pipefail
-          # load helper functions (assumes scripts/functions.sh is committed)
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          info "开始下载与解压源码"
+
+          export GITHUB_BASE_URL="https://github.com"
+          export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
           # optional tuning
-          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
           export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
           LOG_TAIL_LINES=80
           FAIL_ON_FATAL_IN_SUCCESS=1
 
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          export MINGW_BASE_URL="https://github.com/mingw-w64/mingw-w64/archive/refs/tags"
-          export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          # make base dir
-          run "创建源码目录" mkdir -p "${SOURCE_CODE_DIR}"
-          run "打印目标目录" echo "Downloading source code to ${SOURCE_CODE_DIR}"
+          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
 
-          # 下载源码（每个下载都包装 run）
-          run "下载 gcc ${GCC_VERSION}" curl -sSL "${GNU_BASE_URL}/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz" -o "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
-          run "下载 binutils ${binutils}" curl -sSL "${GNU_BASE_URL}/binutils/binutils-${binutils}.tar.gz" -o "${SOURCE_CODE_DIR}/binutils-${binutils}.tar.gz"
-          run "下载 mingw-w64 v${mingw_w64}" curl -sSL "${MINGW_BASE_URL}/v${mingw_w64}.tar.gz" -o "${SOURCE_CODE_DIR}/mingw-w64-v${mingw_w64}.tar.gz"
-          run "下载 libiconv ${libiconv}" curl -sSL "${GNU_BASE_URL}/libiconv/libiconv-${libiconv}.tar.gz" -o "${SOURCE_CODE_DIR}/libiconv-${libiconv}.tar.gz"
-          run "下载 zlib ${zlib}" curl -sSL "https://zlib.net/fossils/zlib-${zlib}.tar.gz" -o "${SOURCE_CODE_DIR}/zlib-${zlib}.tar.gz"
-          run "下载 libgnurx ${libgnurx}" curl -sSL "${GNU_BASE_URL}/gnurx/libgnurx-${libgnurx}.tar.gz" -o "${SOURCE_CODE_DIR}/libgnurx-${libgnurx}.tar.gz"
-          run "下载 bzip2 ${bzip2}" curl -sSL "https://sourceware.org/pub/bzip2/bzip2-${bzip2}.tar.gz" -o "${SOURCE_CODE_DIR}/bzip2-${bzip2}.tar.gz"
-          run "下载 make ${make}" curl -sSL "${GNU_BASE_URL}/make/make-${make}.tar.gz" -o "${SOURCE_CODE_DIR}/make-${make}.tar.gz"
-          run "下载 termcap ${termcap}" curl -sSL "${GNU_BASE_URL}/termcap/termcap-${termcap}.tar.gz" -o "${SOURCE_CODE_DIR}/termcap-${termcap}.tar.gz"
-          run "下载 libffi ${libffi}" curl -sSL "${GNU_BASE_URL}/libffi/libffi-${libffi}.tar.gz" -o "${SOURCE_CODE_DIR}/libffi-${libffi}.tar.gz"
-          run "下载 expat ${expat}" curl -sSL "https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-${expat}.tar.gz" -o "${SOURCE_CODE_DIR}/expat-${expat}.tar.gz"
-          run "下载 ncurses ${ncurses}" curl -sSL "${GNU_BASE_URL}/ncurses/ncurses-${ncurses}.tar.gz" -o "${SOURCE_CODE_DIR}/ncurses-${ncurses}.tar.gz"
-          run "下载 readline ${readline}" curl -sSL "${GNU_BASE_URL}/readline/readline-${readline}.tar.gz" -o "${SOURCE_CODE_DIR}/readline-${readline}.tar.gz"
-          run "下载 gdbm ${gdbm}" curl -sSL "${GNU_BASE_URL}/gdbm/gdbm-${gdbm}.tar.gz" -o "${SOURCE_CODE_DIR}/gdbm-${gdbm}.tar.gz"
-          run "下载 openssl ${openssl}" curl -sSL "https://www.openssl.org/source/openssl-${openssl}.tar.gz" -o "${SOURCE_CODE_DIR}/openssl-${openssl}.tar.gz"
-          run "下载 tcl ${tcl}" curl -sSL "https://prdownloads.sourceforge.net/tcl/tcl${tcl}-src.tar.gz" -o "${SOURCE_CODE_DIR}/tcl${tcl}-src.tar.gz"
-          run "下载 tk ${tk}" curl -sSL "https://prdownloads.sourceforge.net/tcl/tk${tk}-src.tar.gz" -o "${SOURCE_CODE_DIR}/tk${tk}-src.tar.gz"
-          run "下载 python ${python}" curl -sSL "https://www.python.org/ftp/python/${python}/Python-${python}.tgz" -o "${SOURCE_CODE_DIR}/Python-${python}.tgz"
-          run "下载 xz ${xz}" curl -sSL "https://tukaani.org/xz/xz-${xz}.tar.gz" -o "${SOURCE_CODE_DIR}/xz-${xz}.tar.gz"
-          run "下载 sqlite ${sqlite}" curl -sSL "https://www.sqlite.org/2024/sqlite-autoconf-${sqlite//./}-0.tar.gz" -o "${SOURCE_CODE_DIR}/sqlite-autoconf-${sqlite//./}-0.tar.gz"
-          run "下载 gdb ${gdb}" curl -sSL "${GNU_BASE_URL}/gdb/gdb-${gdb}.tar.xz" -o "${SOURCE_CODE_DIR}/gdb-${gdb}.tar.xz"
-
-
-          # 解压
-          run "解压 gcc" tar -xf "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}.tar.gz"
-          run "解压 binutils" tar -xf "${SOURCE_CODE_DIR}/binutils-${binutils}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/binutils-${binutils}.tar.gz"
-          run "解压 mingw-w64" tar -xf "${SOURCE_CODE_DIR}/mingw-w64-v${mingw_w64}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/mingw-w64-v${mingw_w64}.tar.gz"
-          run "解压 libiconv" tar -xf "${SOURCE_CODE_DIR}/libiconv-${libiconv}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/libiconv-${libiconv}.tar.gz"
-          run "解压 zlib" tar -xf "${SOURCE_CODE_DIR}/zlib-${zlib}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/zlib-${zlib}.tar.gz"
-          run "解压 libgnurx" tar -xf "${SOURCE_CODE_DIR}/libgnurx-${libgnurx}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/libgnurx-${libgnurx}.tar.gz"
-          run "解压 bzip2" tar -xf "${SOURCE_CODE_DIR}/bzip2-${bzip2}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/bzip2-${bzip2}.tar.gz"
-          run "解压 make" tar -xf "${SOURCE_CODE_DIR}/make-${make}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/make-${make}.tar.gz"
-          run "解压 termcap" tar -xf "${SOURCE_CODE_DIR}/termcap-${termcap}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/termcap-${termcap}.tar.gz"
-          run "解压 libffi" tar -xf "${SOURCE_CODE_DIR}/libffi-${libffi}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/libffi-${libffi}.tar.gz"
-          run "解压 expat" tar -xf "${SOURCE_CODE_DIR}/expat-${expat}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/expat-${expat}.tar.gz"
-          run "解压 ncurses" tar -xf "${SOURCE_CODE_DIR}/ncurses-${ncurses}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/ncurses-${ncurses}.tar.gz"
-          run "解压 readline" tar -xf "${SOURCE_CODE_DIR}/readline-${readline}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/readline-${readline}.tar.gz"
-          run "解压 libgdbm" tar -xf "${SOURCE_CODE_DIR}/gdbm-${libgdbm}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/gdbm-${libgdbm}.tar.gz"
-          run "解压 openssl" tar -xf "${SOURCE_CODE_DIR}/openssl-${openssl}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/openssl-${openssl}.tar.gz"
-          run "解压 tcl" tar -xf "${SOURCE_CODE_DIR}/tcl${tcl}-src.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/tcl${tcl}-src.tar.gz"
-          run "解压 tk" tar -xf "${SOURCE_CODE_DIR}/tk${tk}-src.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/tk${tk}-src.tar.gz"
-          run "解压 python" tar -xf "${SOURCE_CODE_DIR}/Python-${python}.tgz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/Python-${python}.tgz"
-          run "解压 xz" tar -xf "${SOURCE_CODE_DIR}/xz-${xz}.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/xz-${xz}.tar.gz"
-          run "解压 sqlite" tar -xf "${SOURCE_CODE_DIR}/sqlite-autoconf-${sqlite//./}-0.tar.gz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/sqlite-autoconf-${sqlite//./}-0.tar.gz"
-          run "解压 gdb" tar -xf "${SOURCE_CODE_DIR}/gdb-${gdb}.tar.xz" -C "${SOURCE_CODE_DIR}/" && rm -f "${SOURCE_CODE_DIR}/gdb-${gdb}.tar.xz"
-
-          run "整理源码目录名" bash -lc '
-            mv "${SOURCE_CODE_DIR}/gcc-${GCC_VERSION}" "${SOURCE_CODE_DIR}/gcc"
-            mv "${SOURCE_CODE_DIR}/binutils-${binutils}" "${SOURCE_CODE_DIR}/binutils"
-            # the extracted dir name may vary; try common variant:
-            if [ -d "${SOURCE_CODE_DIR}/mingw-w64-${mingw_w64}" ]; then
-              mv "${SOURCE_CODE_DIR}/mingw-w64-${mingw_w64}" "${SOURCE_CODE_DIR}/mingw-w64"
-            elif [ -d "${SOURCE_CODE_DIR}/mingw-w64-v${mingw_w64}" ]; then
-              mv "${SOURCE_CODE_DIR}/mingw-w64-v${mingw_w64}" "${SOURCE_CODE_DIR}/mingw-w64"
-            fi
-            mv "${SOURCE_CODE_DIR}/libiconv-${libiconv}" "${SOURCE_CODE_DIR}/libiconv"
-            mv "${SOURCE_CODE_DIR}/zlib-${zlib}" "${SOURCE_CODE_DIR}/zlib"
-            mv "${SOURCE_CODE_DIR}/libgnurx-${libgnurx}" "${SOURCE_CODE_DIR}/libgnurx"
-            mv "${SOURCE_CODE_DIR}/bzip2-${bzip2}" "${SOURCE_CODE_DIR}/bzip2"
-            mv "${SOURCE_CODE_DIR}/make-${make}" "${SOURCE_CODE_DIR}/make"
-            mv "${SOURCE_CODE_DIR}/termcap-${termcap}" "${SOURCE_CODE_DIR}/termcap"
-            mv "${SOURCE_CODE_DIR}/libffi-${libffi}" "${SOURCE_CODE_DIR}/libffi"
-            mv "${SOURCE_CODE_DIR}/expat-${expat}" "${SOURCE_CODE_DIR}/expat"
-            mv "${SOURCE_CODE_DIR}/ncurses-${ncurses}" "${SOURCE_CODE_DIR}/ncurses"
-            mv "${SOURCE_CODE_DIR}/readline-${readline}" "${SOURCE_CODE_DIR}/readline"
-            mv "${SOURCE_CODE_DIR}/gdbm-${libgdbm}" "${SOURCE_CODE_DIR}/gdbm"
-            mv "${SOURCE_CODE_DIR}/openssl-${openssl}" "${SOURCE_CODE_DIR}/openssl"
-            mv "${SOURCE_CODE_DIR}/tcl${tcl}-src" "${SOURCE_CODE_DIR}/tcl"
-            mv "${SOURCE_CODE_DIR}/tk${tk}-src" "${SOURCE_CODE_DIR}/tk"
-            mv "${SOURCE_CODE_DIR}/Python-${python}" "${SOURCE_CODE_DIR}/python"
-            mv "${SOURCE_CODE_DIR}/xz-${xz}" "${SOURCE_CODE_DIR}/xz"
-            mv "${SOURCE_CODE_DIR}/sqlite-autoconf-${sqlite//./}-0" "${SOURCE_CODE_DIR}/sqlite"
-            mv "${SOURCE_CODE_DIR}/gdb-${gdb}" "${SOURCE_CODE_DIR}/gdb"
-          '
-          info "解压与整理步骤完成"
-
-          # run contrib/download_prerequisites (wrapped)
-          cd "${SOURCE_CODE_DIR}/gcc"
-          run "GCC: 下载依赖 (download_prerequisites)" ./contrib/download_prerequisites --directory="${SOURCE_CODE_DIR}"
-
-          # 清理可能存在的依赖目录/压缩包（保持你的逻辑）
-          cd "${SOURCE_CODE_DIR}/gcc"
-          for d in gmp mpfr mpc isl; do
-            if [ -d "${SOURCE_CODE_DIR}/gcc/$d" ]; then
-              run "删除 ${SOURCE_CODE_DIR}/gcc/$d" rm -rf "${SOURCE_CODE_DIR}/gcc/$d"
-            fi
-          done
-
-          cd "${SOURCE_CODE_DIR}"
-          for f in gmp-*.tar.* mpfr-*.tar.* mpc-*.tar.* isl-*.tar.*; do
-            if [ -f "${SOURCE_CODE_DIR}/$f" ]; then
-              run "删除压缩包 ${f}" rm -f "${SOURCE_CODE_DIR}/$f"
-            fi
-          done
-
-          # 重命名库目录（保留你的现有逻辑）
-          cd "${SOURCE_CODE_DIR}"
-          for name in gmp mpfr mpc isl; do
-            # nullglob for portability in bash (we already source functions.sh so bash is available)
-            shopt -s nullglob
-            dirs=(${name}-*/)
-            shopt -u nullglob
-
-            if [ ${#dirs[@]} -gt 0 ] && [ -d "${dirs[0]}" ]; then
-              dir="${dirs[0]%/}"
-              run "重命名 ${dir} 为 ${name}" bash -lc "rm -rf \"$name\" 2>/dev/null || true; mv \"${SOURCE_CODE_DIR}/${dir}\" \"${SOURCE_CODE_DIR}/${name}\""
+          for p in "${gnu_pkgs[@]}";do
+            if [[ "${p}" == "gcc" ]]; then
+              ver="${GCC_VERSION}"
+              echo "下载${p} 源码版本: ${ver}"
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
             else
-              warn "未找到 ${name}-* 目录"
+              val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+              ver=${!val}
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
+          done
+          for p in "${github_pkgs[@]}";do
+            case "${p}" in
+              mingw-w64)
+                ver="${MINGW_W64}"
+                github_author="mingw-w64"
+                project_name="mingw-w64"
+                ;;
+              python)
+                ver="${PYTHON}"
+                github_author="python"
+                project_name="cpython"
+                ;;
+              openssl|sqlite|libffi|pkgconf)
+                pkg_name=${p^^}
+                ver="${!pkg_name}"
+                github_author="${p}"
+                project_name="${p}"
+                ;;
+              ninja)
+                ver="${NINJA}"
+                github_author="ninja-build"
+                project_name="ninja"
+                ;;
+              cmake)
+                ver="${CMAKE}"
+                github_author="Kitware"
+                project_name="CMake"
+                ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
+              *)
+                error "未知的 GitHub 包: ${p}"
+                exit 1
+                ;;
+            esac
+            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            elif [[ "${p}" == "sqlite" ]]; then
+              tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "expat" ]]; then
+              tail="R_${ver//./_}.tar.gz"
+            else
+              tail="v${ver}.tar.gz"
+            fi
+            run "下载${p}-${ver} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
+            run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
 
           info "下载与解压步骤完成"
@@ -568,8 +518,3 @@ jobs:
           # final aggregate summary
           agg="$(aggregate_all_summaries)"
           info "聚合摘要已写入：$agg"
-
-
-
-
-
