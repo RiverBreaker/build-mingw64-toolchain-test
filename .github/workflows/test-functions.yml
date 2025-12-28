@@ -46,6 +46,7 @@ jobs:
           find /usr -name "mpc.h" 2>/dev/null
           find /usr -name "isl.h" 2>/dev/null
           dpkg -L libisl-dev | grep -E '/include|\.h$' || true
+          ls -lh /usr/include/isl/ || true
           info "系统依赖安装完成"
 
       # - name: Get Dependencies Version
