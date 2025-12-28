@@ -15,7 +15,7 @@
       "sqlite": "3.43.1",
       "openssl": "3.6.0",
       "libffi": "3.4.4",
-      "pkgconf": "0.29.2",
+      "pkgconf": "2.5.0",
       "ninja": "1.11.1",
       "python": "3.12.4"
     },
