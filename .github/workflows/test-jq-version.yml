@@ -80,7 +80,7 @@ jobs:
           for p in "${gnu_pkgs[@]}";do
             ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
             echo "下载${p} 源码版本: ${ver}"
-            run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
           done
 
 
