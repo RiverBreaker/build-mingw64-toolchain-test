@@ -410,7 +410,6 @@ archive_extract() {
   local output_dir="$2"
   local filename
   filename="$(basename "$archive")"
-  local target_dir="${3:-}"
 
   local tmp_dir="${output_dir}/tmp_extract_$(date +%s%N)"
   mkdir -p "$tmp_dir"
@@ -438,11 +437,11 @@ archive_extract() {
   local pkg_name
   pkg_name="$(echo "$filename" | sed -E 's/\.tar\.(gz|xz|bz2)$//' | sed -E 's/-[0-9].*$//')"
 
-  if [[ -n "$target_dir" ]]; then
-    mv "$extracted_dir" "${output_dir}/${target_dir}"
-  else
-    mv "$extracted_dir" "${output_dir}/${pkg_name}"
-  fi
+  mv "$extracted_dir" "${output_dir}/${pkg_name}" || {
+    echo "重命名失败: $dirname -> $pkg_name" >&2
+    rm -rf "$tmp_dir"
+    return 1
+  }
 
   rm -rf "$tmp_dir"
   rm -f "$archive"
