@@ -81,7 +81,11 @@ jobs:
           for p in "${gnu_pkgs[@]}";do
             ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
             echo "下载${p} 源码版本: ${!ver}"
-            run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            if [[ "${p}" == "gcc" ]]; then
+              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/gcc-${!ver}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            else
+              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            fi
             echo "解压${p} 源码版本: ${!ver}"
             run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
           done

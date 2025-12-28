@@ -393,7 +393,7 @@ curl_download() {
 
   curl -SsL --retry 3 --retry-delay 2 "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
   if [[ ! -f "$output/$filename" ]]; then
-    echo "Downloaded file not found: $output/$filename" >&2
+    echo "下载文件找不到: $output/$filename，将重试" >&2
     curl -sSL --retry 3 --retry-delay 2 "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
   fi
 }
