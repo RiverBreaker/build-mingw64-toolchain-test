@@ -77,13 +77,12 @@ jobs:
 
           gnu_pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb )
           pkgs=( gcc mingw-w64 python openssl zstd sqlite expat libffi pkg-config ninja libgnurx xz bzip2 cmake )
+          github_pkgs=()
           for p in "${gnu_pkgs[@]}";do
             ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-            echo "下载${p} 源码版本: ${ver}"
+            echo "下载${p} 源码版本: ${!ver}"
             run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            ls -lah "${SOURCE_CODE_DIR}"
+            run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            ls -lah "${SOURCE_CODE_DIR}"
           done
-
-
-
-
-          ls -lah "${SOURCE_CODE_DIR}"

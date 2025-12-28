@@ -397,10 +397,56 @@ curl_download() {
 # 使用示例
 # curl_download "$url" "$output_path"
 
-# for d in pkg[$@] ;do
+# for d in ${pkg[@]} ;do
 #  curl_download "${GNU_BASE_URL}/${d}/${d}-${ver}.tar.gz" "$output_path"
 # done
 
-# curl_download "${GNU_BASE_URL}/binutils/binutils-${ver}.tar.gz" "$output_path"
-# curl_download "${GNU_BASE_URL}/gmp/gmp-${ver}.tar.gz" "$output_path"
-# curl_download "${GNU_BASE_URL}/mpc/mpc-${ver}.tar.gz" "$output_path"
+archive_extract() {
+  local archive="$1"
+  local output_dir="$2"
+  local filename="$(basename "$archive")"
+
+  # 创建临时目录
+  local tmp_dir="${output_dir}/tmp_extract_$(date +%s%N)"
+  mkdir -p "$tmp_dir"
+
+  # 解压
+  tar -xf "$archive" -C "$tmp_dir" || {
+    echo "解压失败: $archive" >&2
+    rm -rf "$tmp_dir"
+    return 1
+  }
+
+  # 获取解压出来的目录名（假设只有一个目录）
+  local extracted_dir
+  extracted_dir=$(find "$tmp_dir" -maxdepth 1 -type d | head -1)
+
+  if [[ -z "$extracted_dir" ]]; then
+    echo "错误：找不到解压后的目录" >&2
+    rm -rf "$tmp_dir"
+    return 1
+  fi
+
+  # 提取软件名（去除版本号）
+  local dirname="$(basename "$extracted_dir")"
+  local pkg_name="${dirname%-*}"  # 去除第一个"-"后面的内容
+
+  # 如果 pkg_name 为空或与 dirname 相同，尝试另一种方法
+  if [[ "$pkg_name" == "$dirname" || -z "$pkg_name" ]]; then
+    pkg_name="$(echo "$filename" | sed 's/[-_][0-9].*//' | sed 's/\.tar\..*//')"
+  fi
+
+  # 移动并重命名
+  mv "$extracted_dir" "${output_dir}/${pkg_name}" || {
+    echo "重命名失败" >&2
+    rm -rf "$tmp_dir"
+    return 1
+  }
+
+  # 清理
+  rm -rf "$tmp_dir"
+  rm -f "$archive"  # 可选：删除原始压缩包
+
+  info "解压完成: ${archive} -> ${output_dir}/${pkg_name}"
+  return 0
+}
