@@ -79,69 +79,123 @@ jobs:
           pkgs=( expat )
           github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf )
 
-          for p in "${gnu_pkgs[@]}";do
-            if [[ "${p}" == "gcc" ]]; then
-              version="${GCC_VERSION}"
+          # for p in "${gnu_pkgs[@]}";do
+          #   if [[ "${p}" == "gcc" ]]; then
+          #     version="${GCC_VERSION}"
+          #     echo "下载${p} 源码版本: ${version}"
+          #     run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
+          #   else
+          #     ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+          #     echo "下载${p} 源码版本: ${!ver}"
+          #     run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+          #   fi
+          # done
+          # ls -lah "${SOURCE_CODE_DIR}"
+          # for p in "${gnu_pkgs[@]}";do
+          #   if [[ "${p}" == "gcc" ]]; then
+          #     echo "解压${p} 源码版本: ${GCC_VERSION}"
+          #     run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          #   else
+          #     ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+          #     echo "解压${p} 源码版本: ${!ver}"
+          #     run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+          #   fi
+          #   du -sh "${SOURCE_CODE_DIR}/${p}"
+          # done
+          # ls -lah "${SOURCE_CODE_DIR}"
+          # for p in "${github_pkgs[@]}";do
+          #   case "${p}" in
+          #     mingw-w64)
+          #       ver="${MINGW_W64}"
+          #       github_author="mingw-w64"
+          #       project_name="mingw-w64"
+          #       ;;
+          #     python)
+          #       ver="${PYTHON}"
+          #       github_author="python"
+          #       project_name="cpython"
+          #       ;;
+          #     openssl|sqlite|libffi|pkgconf)
+          #       pkg_name=${p^^}
+          #       ver="${!pkg_name}"
+          #       github_author="${p}"
+          #       project_name="${p}"
+          #       ;;
+          #     ninja)
+          #       ver="${NINJA}"
+          #       github_author="ninja-build"
+          #       project_name="ninja"
+          #       ;;
+          #     cmake)
+          #       ver="${CMAKE}"
+          #       github_author="Kitware"
+          #       project_name="CMake"
+          #       ;;
+          #     *)
+          #       error "未知的 GitHub 包: ${p}"
+          #       exit 1
+          #       ;;
+          #   esac
+          #   if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+          #     tail="${p}-${ver}.tar.gz"
+          #   elif [[ "${p}" == "sqlite" ]]; then
+          #     tail="version-${ver}.tar.gz"
+          #   else
+          #     tail="v${ver}.tar.gz"
+          #   fi
+          #   echo "下载${p} 源码版本: ${ver}"
+          #   run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
+          #   ls -lah "${SOURCE_CODE_DIR}"
+          # done
+          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
+
+          for p in "${gnu_pkgs[@]}"; do
+              if [[ "$p" == "gcc" ]]; then
+                  version="${GCC_VERSION}"
+              else
+                  ver_upper="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+                  version="${!ver_upper}"
+              fi
               echo "下载${p} 源码版本: ${version}"
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
-            else
-              ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-              echo "下载${p} 源码版本: ${!ver}"
-              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
-            fi
+
+              echo "解压${p} 源码版本: ${version}"
+              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
+              du -sh "${SOURCE_CODE_DIR}/${p}"
           done
-          ls -lah "${SOURCE_CODE_DIR}"
-          for p in "${gnu_pkgs[@]}";do
-            if [[ "${p}" == "gcc" ]]; then
-              echo "解压${p} 源码版本: ${GCC_VERSION}"
-              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
-            else
-              ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-              echo "解压${p} 源码版本: ${!ver}"
-              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
-            fi
-            du -sh "${SOURCE_CODE_DIR}/${p}"
+
+          # === GitHub Packages 下载 & 解压 ===
+          declare -A github_pkg_info=(
+            [mingw-w64]="v${MINGW_W64} mingw-w64"
+            [python]="v${PYTHON} python"
+            [openssl]="openssl-${OPENSSL} openssl"
+            [sqlite]="version-${SQLITE} sqlite"
+            [ninja]="v${NINJA} ninja"
+            [cmake]="v${CMAKE} cmake"
+            [libffi]="v${LIBFFI} libffi"
+            [pkgconf]="pkgconf-${PKGCONF} pkgconf"
+          )
+
+          for p in "${!github_pkg_info[@]}"; do
+              read -r tag target_dir <<< "${github_pkg_info[$p]}"
+              # 构造下载 URL
+              case "$p" in
+                  mingw-w64) github_author="mingw-w64"; project_name="mingw-w64";;
+                  python) github_author="python"; project_name="cpython";;
+                  ninja) github_author="ninja-build"; project_name="ninja";;
+                  cmake) github_author="Kitware"; project_name="CMake";;
+                  openssl|sqlite|libffi|pkgconf) github_author="$p"; project_name="$p";;
+                  *) echo "未知 GitHub 包: $p"; exit 1;;
+              esac
+
+              archive_file="${SOURCE_CODE_DIR}/${tag}.tar.gz"
+              url="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tag}.tar.gz"
+
+              echo "下载${p} 源码版本: ${tag}"
+              run "下载${p} 源码" curl_download "$url" "${SOURCE_CODE_DIR}"
+
+              echo "解压${p} 源码版本: ${tag}"
+              run "解压${p} 源码" archive_extract "$archive_file" "${SOURCE_CODE_DIR}" "$target_dir"
+              du -sh "${SOURCE_CODE_DIR}/${target_dir}"
           done
-          ls -lah "${SOURCE_CODE_DIR}"
-          for p in "${github_pkgs[@]}";do
-            case "${p}" in
-              mingw-w64)
-                ver="${MINGW_W64}"
-                github_author="mingw-w64"
-                project_name="mingw-w64"
-                ;;
-              python)
-                ver="${PYTHON}"
-                github_author="python"
-                project_name="cpython"
-                ;;
-              openssl|sqlite|libffi|pkgconf)
-                pkg_name=${p^^}
-                ver="${!pkg_name}"
-                github_author="${p}"
-                project_name="${p}"
-                ;;
-              ninja)
-                ver="${NINJA}"
-                github_author="ninja-build"
-                project_name="ninja"
-                ;;
-              cmake)
-                ver="${CMAKE}"
-                github_author="Kitware"
-                project_name="CMake"
-                ;;
-              *)
-                error "未知的 GitHub 包: ${p}"
-                exit 1
-                ;;
-            esac
-            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
-              tail="${p}-${ver}.tar.gz"
-            else
-              tail="v${ver}.tar.gz"
-            fi
-            echo "下载${p} 源码版本: ${ver}"
-            run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
-            ls -lah "${SOURCE_CODE_DIR}"
-          done
+
