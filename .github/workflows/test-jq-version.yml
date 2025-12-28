@@ -76,8 +76,7 @@ jobs:
           mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
 
           gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          pkgs=( expat )
-          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -124,6 +123,11 @@ jobs:
                 github_author="Kitware"
                 project_name="CMake"
                 ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
@@ -133,6 +137,8 @@ jobs:
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "expat" ]]; then
+              tail="R_${ver//./_}.tar.gz"
             else
               tail="v${ver}.tar.gz"
             fi
