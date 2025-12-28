@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
-          export MINGW_BASE_URL="https://github.com/mingw-w64/mingw-w64/archive/refs/tags"
+          export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
           # optional tuning
@@ -76,8 +76,9 @@ jobs:
           mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
 
           gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          pkgs=( gcc mingw-w64 python openssl zstd sqlite expat libffi pkg-config ninja libgnurx xz bzip2 cmake )
-          github_pkgs=()
+          pkgs=( expat )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf )
+
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
               version="${GCC_VERSION}"
@@ -102,3 +103,44 @@ jobs:
             du -sh "${SOURCE_CODE_DIR}/${p}"
           done
           ls -lah "${SOURCE_CODE_DIR}"
+          for p in "${github_pkgs[@]}";do
+            case "${p}" in
+              mingw-w64)
+                ver="${!MINGW_W64}"
+                github_author="mingw-w64"
+                project_name="mingw-w64"
+                ;;
+              python)
+                ver="${!PYTHON}"
+                github_author="python"
+                project_name="cpython"
+                ;;
+              openssl|sqlite|libffi|pkgconf)
+                ver="${!{p^^}}"
+                github_author="${p}"
+                project_name="${p}"
+                ;;
+              ninja)
+                ver="${!NINJA}"
+                github_author="ninja-build"
+                project_name="ninja"
+                ;;
+              cmake)
+                ver="${!CMAKE}"
+                github_author="Kitware"
+                project_name="CMake"
+                ;;
+              *)
+                error "未知的 GitHub 包: ${p}"
+                exit 1
+                ;;
+            esac
+            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            else
+              tail="v${ver}.tar.gz"
+            fi
+            echo "下载${p} 源码版本: ${ver}"
+            run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
+            ls -lah "${SOURCE_CODE_DIR}"
+          done
