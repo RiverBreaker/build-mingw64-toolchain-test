@@ -139,6 +139,7 @@ jobs:
             run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
             echo "解压${p} 源码版本: ${ver}"
             run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
+            du -sh "${SOURCE_CODE_DIR}/${p}"
           done
           ls -lh "${SOURCE_CODE_DIR}"
 
