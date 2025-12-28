@@ -72,16 +72,15 @@ jobs:
           FAIL_ON_FATAL_IN_SUCCESS=1
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
-          export -f _curl_download get_version sqlite_digits download_by_name
 
-          pkgs=( gcc binutils mingw-w64 libiconv zlib libgnurx bzip2 make termcap libffi expat ncurses readline gdbm openssl tcl tk python xz sqlite gdb )
-          for pkg in "${pkgs[@]}"; do
-            run "下载 ${pkg}" bash -lc "download_by_name ${pkg} > \"${GITHUB_WORKSPACE}/logs/download_${pkg}.path\" || exit 1"
-            # 读取路径（如果需要在同步脚本里进一步处理）
-            dlpath="$(cat "${GITHUB_WORKSPACE}/logs/download_${pkg}.path" 2>/dev/null || true)"
-            info "Downloaded ${pkg} -> ${dlpath:-<missing>}"
+          mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
+
+          gnu_pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb )
+          pkgs=( gcc mingw-w64 python openssl zstd sqlite expat libffi pkg-config ninja libgnurx xz bzip2 cmake )
+          for p in "${gnu_pkgs[@]}";do
+            ver="${p}"
+            run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
           done
+
 
           ls -lah "${SOURCE_CODE_DIR}"
