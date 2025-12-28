@@ -41,10 +41,10 @@ jobs:
 
           # 检查已安装的版本
           apt list --installed | grep -E "(gmp|mpfr|mpc|isl)"
-          find /usr -name "mpfr.h" 2>/dev/null
-          find /usr -name "gmp.h" 2>/dev/null
-          find /usr -name "mpc.h" 2>/dev/null
-          find /usr -name "isl.h" 2>/dev/null
+          find / -name "mpfr.h" 2>/dev/null
+          find / -name "gmp.h" 2>/dev/null
+          find / -name "mpc.h" 2>/dev/null
+          find / -name "isl.h" 2>/dev/null
           info "系统依赖安装完成"
 
       # - name: Get Dependencies Version
