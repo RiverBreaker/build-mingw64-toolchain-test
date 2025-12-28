@@ -75,7 +75,7 @@ jobs:
 
           mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
 
-          gnu_pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb )
+          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
           pkgs=( gcc mingw-w64 python openssl zstd sqlite expat libffi pkg-config ninja libgnurx xz bzip2 cmake )
           github_pkgs=()
           for p in "${gnu_pkgs[@]}";do
