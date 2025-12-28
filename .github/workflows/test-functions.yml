@@ -177,6 +177,13 @@ jobs:
           export HOST="x86_64-pc-linux-gnu"
           export TARGET="x86_64-w64-mingw32"
 
+          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          for p in "${pkgs[@]}"; do
+            val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+            run "准备取消相关环境变量" unset "${val}"
+          done
+          unset MINGW_W64 gcc_version
+
           # binutils
           run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
           run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" --prefix="${PREFIX}" --target="${TARGET}" --host="${HOST}" --build="${BUILD}" --disable-multilib --disable-werror
