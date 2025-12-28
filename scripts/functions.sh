@@ -506,3 +506,127 @@ archive_extract() {
 
   info "解压完成: ${archive} -> ${output_dir}/${pkg_name}"
 }
+
+install_pkg() {
+  local desc="$1"; shift
+  local pkgs=("$@")
+  if [[ ${#pkgs[@]} -eq 0 ]]; then
+    warn "install_pkg: 没有指定要安装的包（$desc）"
+    return 0
+  fi
+
+  local logfile="$LOG_DIR/$(_sanitize "$desc").log"
+  info "$desc"
+  {
+    echo "[$(date)] PKG INSTALL: ${pkgs[*]}"
+    echo "----------------------------------------"
+  } >"$logfile"
+
+  # detect package manager and commands
+  local pkg_mgr=""
+  local install_cmd=()
+  local update_cmd=()
+  if command -v apt-get >/dev/null 2>&1; then
+    pkg_mgr="apt-get"
+    update_cmd=(apt-get update -y)
+    install_cmd=(apt-get install -y --no-install-recommends)
+  elif command -v dnf >/dev/null 2>&1; then
+    pkg_mgr="dnf"
+    update_cmd=(dnf makecache --refresh)
+    install_cmd=(dnf install -y)
+  elif command -v yum >/dev/null 2>&1; then
+    pkg_mgr="yum"
+    update_cmd=(yum makecache)
+    install_cmd=(yum install -y)
+  elif command -v pacman >/dev/null 2>&1; then
+    pkg_mgr="pacman"
+    update_cmd=(pacman -Sy --noconfirm)
+    install_cmd=(pacman -S --noconfirm)
+  elif command -v zypper >/dev/null 2>&1; then
+    pkg_mgr="zypper"
+    update_cmd=(zypper refresh)
+    install_cmd=(zypper --non-interactive install)
+  elif command -v apk >/dev/null 2>&1; then
+    pkg_mgr="apk"
+    update_cmd=(apk update)
+    install_cmd=(apk add)
+  else
+    echo "No supported package manager found on system" >>"$logfile"
+    die "不支持的系统：找不到 apt-get/dnf/yum/pacman/zypper/apk" 2
+  fi
+
+  # use sudo if not root
+  local SUDO=""
+  if [[ "$(id -u)" -ne 0 ]]; then
+    SUDO="sudo"
+  fi
+
+  # temporarily disable errexit & ERR trap
+  local old_trap
+  old_trap="$(trap -p ERR || true)"
+  trap - ERR
+  set +e
+
+  local rc=0
+
+  # run update first for safety (catch failures but continue to try install)
+  if [[ ${#update_cmd[@]} -ne 0 ]]; then
+    echo "[$(date)] RUN: ${update_cmd[*]}" >>"$logfile"
+    if ! $SUDO "${update_cmd[@]}" >>"$logfile" 2>&1; then
+      warn "包管理器更新命令失败（可能可忽略），继续尝试安装： ${update_cmd[*]}"
+      echo "---- update failed, continuing ----" >>"$logfile"
+    fi
+  fi
+
+  # run install (all pkgs in one invocation)
+  echo "[$(date)] RUN: ${install_cmd[*]} ${pkgs[*]}" >>"$logfile"
+  if ! $SUDO "${install_cmd[@]}" "${pkgs[@]}" >>"$logfile" 2>&1; then
+    rc=$?
+  else
+    rc=0
+  fi
+
+  # restore trap & errexit
+  if [[ -n "$old_trap" ]]; then
+    eval "$old_trap" || true
+  else
+    trap - ERR
+  fi
+  set -e
+
+  if [[ $rc -ne 0 ]]; then
+    echo >&2
+    warn "安装步骤失败：$desc"
+    warn "退出码：$rc"
+    echo "----------------------------------------" >&2
+
+    local errors
+    errors="$(_extract_errors "$logfile" | head -n 200)" || true
+    if [[ -n "$errors" ]]; then
+      warn "关键错误摘要（从日志 grep）："
+      echo "$errors" >&2
+    else
+      warn "未在日志中找到匹配 ERROR_REGEX 的行，打印最后 ${LOG_TAIL_LINES} 行以供调试："
+      tail -n "$LOG_TAIL_LINES" "$logfile" >&2
+    fi
+
+    echo "----------------------------------------" >&2
+    local summary
+    summary="$(error_summary "$logfile")"
+    die "完整日志见：$logfile ; 摘要见：$summary" "$rc"
+  fi
+
+  # even if install returned 0, check for fatal keywords in log if desired
+  if [[ "${FAIL_ON_FATAL_IN_SUCCESS:-0}" == "1" ]]; then
+    if ! _scan_log_for_fatal_and_maybe_fail "$logfile"; then
+      die "失败：在 $desc 日志中检测到致命关键字（尽管命令返回0）"
+    fi
+  fi
+
+  # non-fatal errors/warnings summary
+  _scan_log_for_errors_and_warn "$logfile" || true
+
+  info "完成：$desc"
+  return 0
+}
+
