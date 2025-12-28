@@ -32,15 +32,15 @@ jobs:
 
           run "apt-get update" sudo apt-get update
 
-          pkgs="build-essential autoconf automake libtool pkg-config flex bison texinfo lzma-dev zlib1g-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev git wget tar xz-utils jq base64"
+          pkgs="build-essential autoconf automake libtool pkg-config flex bison texinfo liblzma-dev zlib1g-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev git wget tar xz-utils jq base64"
 
           run "apt-get install packages" bash -lc 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y '"$pkgs"
           # 检查已安装的版本
           apt list --installed | grep -E "(gmp|mpfr|mpc|isl)"
-          pkg-config --cflags mpfr 2>/dev/null
-          pkg-config --cflags gmp 2>/dev/null
-          pkg-config --cflags mpc 2>/dev/null
-          pkg-config --cflags isl 2>/dev/null
+          find /usr -name "mpfr.h" 2>/dev/null
+          find /usr -name "gmp.h" 2>/dev/null
+          find /usr -name "mpc.h" 2>/dev/null
+          find /usr -name "isl.h" 2>/dev/null
           info "系统依赖安装完成"
 
       # - name: Get Dependencies Version
