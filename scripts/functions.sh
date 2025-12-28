@@ -391,10 +391,10 @@ curl_download() {
   local output="$2"
   local filename="$(basename "$url")"
 
-  curl -SsL --retry 3 --retry-delay 2 "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
+  curl -SsL "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
   if [[ ! -f "$output/$filename" ]]; then
     echo "下载文件找不到: $output/$filename，将重试" >&2
-    curl -sSL --retry 3 --retry-delay 2 "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
+    curl -sSL "$url" -o "$output/$filename" || { echo "Failed to download $url" >&2; return 1; }
   fi
 }
 
