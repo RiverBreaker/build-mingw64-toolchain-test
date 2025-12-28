@@ -91,7 +91,7 @@ jobs:
               echo "下载${p} 源码版本: ${!ver}"
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
               echo "解压${p} 源码版本: ${!ver}"
-              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
             du -sh "${SOURCE_CODE_DIR}/${p}"
           done
@@ -137,8 +137,7 @@ jobs:
             fi
             echo "下载${p} 源码版本: ${ver}"
             run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
-            ls -lah "${SOURCE_CODE_DIR}"
-            tar -xf "${SOURCE_CODE_DIR}/${tail}" -C "${SOURCE_CODE_DIR}"
-            ls -lah "${SOURCE_CODE_DIR}"
+            echo "解压${p} 源码版本: ${ver}"
+            run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
 

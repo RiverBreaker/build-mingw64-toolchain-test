@@ -406,8 +406,9 @@ curl_download() {
 # done
 
 archive_extract() {
-  local archive="$1"
-  local output_dir="$2"
+  local pkg_name="$1"
+  local archive="$2"
+  local output_dir="$3"
   local filename
   filename="$(basename "$archive")"
 
@@ -432,10 +433,6 @@ archive_extract() {
 
   local dirname
   dirname="$(basename "$extracted_dir")"
-
-  # 从压缩包名反推 pkg 名（最稳）
-  local pkg_name
-  pkg_name="$(echo "$filename" | sed -E 's/\.tar\.(gz|xz|bz2)$//' | sed -E 's/-[0-9].*$//')"
 
   mv "$extracted_dir" "${output_dir}/${pkg_name}" || {
     echo "重命名失败: $dirname -> $pkg_name" >&2
