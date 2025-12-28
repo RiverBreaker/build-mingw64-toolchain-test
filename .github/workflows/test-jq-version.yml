@@ -90,7 +90,7 @@ jobs:
             fi
           done
           ls -lah "${SOURCE_CODE_DIR}"
-          for p in "${pkgs[@]}";do
+          for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
               echo "解压${p} 源码版本: ${GCC_VERSION}"
               run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
