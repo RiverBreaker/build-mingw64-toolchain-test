@@ -555,6 +555,31 @@ install_pkg() {
     die "不支持的系统：找不到 apt-get/dnf/yum/pacman/zypper/apk" 2
   fi
 
+  # helper: check whether a single package is installed
+  is_pkg_installed() {
+    local pkg="$1"
+    case "$pkg_mgr" in
+      apt-get)
+        # dpkg -s returns 0 when package is installed
+        dpkg -s "$pkg" >/dev/null 2>&1
+        ;;
+      dnf|yum|zypper)
+        # rpm -q returns 0 when installed
+        rpm -q "$pkg" >/dev/null 2>&1
+        ;;
+      pacman)
+        pacman -Qi "$pkg" >/dev/null 2>&1
+        ;;
+      apk)
+        # -e checks if package exists/installed
+        apk info -e "$pkg" >/dev/null 2>&1
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+
   # use sudo if not root
   local SUDO=""
   if [[ "$(id -u)" -ne 0 ]]; then
@@ -594,6 +619,7 @@ install_pkg() {
   fi
   set -e
 
+  # If install command itself failed, emit logs as before
   if [[ $rc -ne 0 ]]; then
     echo >&2
     warn "安装步骤失败：$desc"
@@ -616,6 +642,30 @@ install_pkg() {
     die "完整日志见：$logfile ; 摘要见：$summary" "$rc"
   fi
 
+  # ------------------ 新增：安装后逐个校验包是否存在 ------------------
+  local missing=()
+  for p in "${pkgs[@]}"; do
+    if ! is_pkg_installed "$p"; then
+      missing+=("$p")
+    fi
+  done
+
+  if [[ ${#missing[@]} -ne 0 ]]; then
+    warn "以下包在安装命令返回成功后仍未检测到为已安装（可能名不对或依赖未满足）："
+    echo "----------------------------------------" >>"$logfile"
+    for m in "${missing[@]}"; do
+      echo "MISSING: $m" >>"$logfile"
+      warn "  - $m"
+    done
+    echo "----------------------------------------" >>"$logfile"
+
+    # 写摘要并失败（以便 CI 中断）
+    local summary
+    summary="$(error_summary "$logfile")"
+    die "部分包未成功安装：${missing[*]} ; 完整日志见：$logfile ; 摘要见：$summary" 3
+  fi
+  # -------------------------------------------------------------------
+
   # even if install returned 0, check for fatal keywords in log if desired
   if [[ "${FAIL_ON_FATAL_IN_SUCCESS:-0}" == "1" ]]; then
     if ! _scan_log_for_fatal_and_maybe_fail "$logfile"; then
@@ -629,4 +679,5 @@ install_pkg() {
   info "完成：$desc"
   return 0
 }
+
 
