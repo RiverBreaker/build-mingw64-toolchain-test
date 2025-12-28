@@ -79,18 +79,19 @@ jobs:
           pkgs=( gcc mingw-w64 python openssl zstd sqlite expat libffi pkg-config ninja libgnurx xz bzip2 cmake )
           github_pkgs=()
           for p in "${gnu_pkgs[@]}";do
-            ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-            echo "下载${p} 源码版本: ${!ver}"
             if [[ "${p}" == "gcc" ]]; then
               version="${GCC_VERSION}"
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
             else
+              ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+              echo "下载${p} 源码版本: ${!ver}"
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
             if [[ "${p}" == "gcc" ]]; then
               echo "解压${p} 源码版本: ${GCC_VERSION}"
               run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
             else
+              ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
               echo "解压${p} 源码版本: ${!ver}"
               run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
