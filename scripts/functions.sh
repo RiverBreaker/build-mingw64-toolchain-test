@@ -456,17 +456,20 @@ archive_extract() {
     return 1
   }
   if [[ "${pkg_name}" == "gcc" ]]; then
+    info "处理 GCC 依赖项"
     local dep_libs=("gmp" "mpfr" "mpc" "isl")
 
     # 进入GCC目录
     cd "${output_dir}/${pkg_name}" || cleanup_and_die "无法进入目录"
 
     # 下载依赖
+    info "下载 GCC 先决条件"
     if ! ./contrib/download_prerequisites --directory="${output_dir}"; then
         cleanup_and_die "下载 GCC 先决条件失败"
     fi
 
     # 清理旧依赖目录
+    info "清理${pkg_name}内部依赖目录"
     for d in "${dep_libs[@]}"; do
         safe_rm "${output_dir}/${pkg_name}/${d}"
     done
@@ -491,6 +494,7 @@ archive_extract() {
         fi
 
         # 只处理第一个目录
+        info "重命名 ${dirs[0]} 到 ${output_dir}/${p}"
         if ! mv "${dirs[0]}" "${output_dir}/${p}"; then
             cleanup_and_die "重命名 ${p} 失败"
         fi
