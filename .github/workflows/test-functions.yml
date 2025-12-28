@@ -291,79 +291,79 @@ jobs:
           path: "${{ github.workspace }}/logs"
 
       - name: verify cross compiler
-      #   shell: bash
-      #   env:
-      #     GITHUB_WORKSPACE: ${{ github.workspace }}
-      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-      #   run: |
-      #     export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
-      #     export TARGET="x86_64-w64-mingw32"
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
+          export TARGET="x86_64-w64-mingw32"
 
-      #     ls "${PREFIX}/bin/"
+          ls "${PREFIX}/bin/"
 
-      #     echo "验证交叉编译器"
-      #     "${PREFIX}/bin/${TARGET}-gcc" --version
-      #     "${PREFIX}/bin/${TARGET}-g++" --version
+          echo "验证交叉编译器"
+          "${PREFIX}/bin/${TARGET}-gcc" --version
+          "${PREFIX}/bin/${TARGET}-g++" --version
 
-      #     echo -e "\n7.3 编译简单的C程序（验证生成Windows PE文件）"
-      #     cat > test-cross.c << 'EOF'
-      #     #include <stdio.h>
-      #     int main() {
-      #         printf("Hello from cross-compiler! This is a Windows executable.\n");
-      #         return 0;
-      #     }
-      #     EOF
+          echo -e "\n7.3 编译简单的C程序（验证生成Windows PE文件）"
+          cat > test-cross.c << 'EOF'
+          #include <stdio.h>
+          int main() {
+              printf("Hello from cross-compiler! This is a Windows executable.\n");
+              return 0;
+          }
+          EOF
 
-      #     # 使用交叉编译器编译
-      #     "${PREFIX}/bin/${TARGET}-gcc" test-cross.c -o test-cross.exe
+          # 使用交叉编译器编译
+          "${PREFIX}/bin/${TARGET}-gcc" test-cross.c -o test-cross.exe
 
-      #     echo "检查生成的文件类型："
-      #     file test-cross.exe || true
-      #     echo "文件应显示为 'PE32+ executable (console) x86-64, for MS Windows'"
+          echo "检查生成的文件类型："
+          file test-cross.exe || true
+          echo "文件应显示为 'PE32+ executable (console) x86-64, for MS Windows'"
 
-      #     # 在Linux上不能运行这个.exe，但可以检查文件是否存在
-      #     if [ -f "test-cross.exe" ]; then
-      #         echo "✓ 成功生成了Windows可执行文件"
-      #         ls -lh test-cross.exe
-      #     else
-      #         echo "✗ 未能生成可执行文件"
-      #         exit 1
-      #     fi
+          # 在Linux上不能运行这个.exe，但可以检查文件是否存在
+          if [ -f "test-cross.exe" ]; then
+              echo "✓ 成功生成了Windows可执行文件"
+              ls -lh test-cross.exe
+          else
+              echo "✗ 未能生成可执行文件"
+              exit 1
+          fi
 
-      #     echo -e "\n7.4 编译C++程序（验证C++支持）"
-      #     cat > test-cross.cpp << 'EOF'
-      #     #include <iostream>
-      #     int main() {
-      #         std::cout << "Hello from C++ cross-compiler!" << std::endl;
-      #         return 0;
-      #     }
-      #     EOF
+          echo -e "\n7.4 编译C++程序（验证C++支持）"
+          cat > test-cross.cpp << 'EOF'
+          #include <iostream>
+          int main() {
+              std::cout << "Hello from C++ cross-compiler!" << std::endl;
+              return 0;
+          }
+          EOF
 
-      #     "${PREFIX}/bin/${TARGET}-g++" test-cross.cpp -o test-cross-cpp.exe
+          "${PREFIX}/bin/${TARGET}-g++" test-cross.cpp -o test-cross-cpp.exe
 
-      #     echo "检查C++生成的文件类型："
-      #     file test-cross-cpp.exe || true
+          echo "检查C++生成的文件类型："
+          file test-cross-cpp.exe || true
 
-      #     echo -e "\n7.5 验证链接到mingw-w64库"
-      #     cat > test-windows.c << 'EOF'
-      #     #include <windows.h>
-      #     #include <stdio.h>
-      #     int main() {
-      #         MessageBoxA(NULL, "Hello from Windows API!", "Test", MB_OK);
-      #         printf("Message box should have appeared (if run on Windows)\n");
-      #         return 0;
-      #     }
-      #     EOF
+          echo -e "\n7.5 验证链接到mingw-w64库"
+          cat > test-windows.c << 'EOF'
+          #include <windows.h>
+          #include <stdio.h>
+          int main() {
+              MessageBoxA(NULL, "Hello from Windows API!", "Test", MB_OK);
+              printf("Message box should have appeared (if run on Windows)\n");
+              return 0;
+          }
+          EOF
 
-      #     "${PREFIX}/bin/${TARGET}-gcc" test-windows.c -o test-windows.exe \
-      #       -Wl,--subsystem,windows
+          "${PREFIX}/bin/${TARGET}-gcc" test-windows.c -o test-windows.exe \
+            -Wl,--subsystem,windows
 
-      #     echo "检查Windows GUI程序："
-      #     file test-windows.exe || true
+          echo "检查Windows GUI程序："
+          file test-windows.exe || true
 
-      #     echo -e "\n7.6 清理测试文件"
-      #     rm -f test-cross.c test-cross.cpp test-windows.c \
-      #           test-cross.exe test-cross-cpp.exe test-windows.exe
+          echo -e "\n7.6 清理测试文件"
+          rm -f test-cross.c test-cross.cpp test-windows.c \
+                test-cross.exe test-cross-cpp.exe test-windows.exe
 
       # - name: Build native
       #   shell: bash
