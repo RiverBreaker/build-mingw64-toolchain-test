@@ -82,12 +82,18 @@ jobs:
             ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
             echo "下载${p} 源码版本: ${!ver}"
             if [[ "${p}" == "gcc" ]]; then
-              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/gcc-${!ver}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              version="${GCC_VERSION}"
+              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
             else
               run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
-            echo "解压${p} 源码版本: ${!ver}"
-            run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            if [[ "${p}" == "gcc" ]]; then
+              echo "解压${p} 源码版本: ${GCC_VERSION}"
+              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+            else
+              echo "解压${p} 源码版本: ${!ver}"
+              run "解压${p} 源码" archive_extract "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            fi
           done
 
           ls -lah "${SOURCE_CODE_DIR}"
