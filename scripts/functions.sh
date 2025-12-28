@@ -408,49 +408,43 @@ curl_download() {
 archive_extract() {
   local archive="$1"
   local output_dir="$2"
-  local filename="$(basename "$archive")"
+  local filename
+  filename="$(basename "$archive")"
 
-  # 创建临时目录
   local tmp_dir="${output_dir}/tmp_extract_$(date +%s%N)"
   mkdir -p "$tmp_dir"
 
-  # 解压
   tar -xf "$archive" -C "$tmp_dir" || {
     echo "解压失败: $archive" >&2
     rm -rf "$tmp_dir"
     return 1
   }
 
-  # 获取解压出来的目录名（假设只有一个目录）
+  # 只找 tmp_dir 下的第一层子目录（排除 tmp_dir 本身）
   local extracted_dir
-  extracted_dir=$(find "$tmp_dir" -maxdepth 1 -type d | head -1)
+  extracted_dir=$(find "$tmp_dir" -mindepth 1 -maxdepth 1 -type d | head -1)
 
   if [[ -z "$extracted_dir" ]]; then
-    echo "错误：找不到解压后的目录" >&2
+    echo "错误：未找到解压后的目录: $archive" >&2
     rm -rf "$tmp_dir"
     return 1
   fi
 
-  # 提取软件名（去除版本号）
-  local dirname="$(basename "$extracted_dir")"
-  local pkg_name="${dirname%-*}"  # 去除第一个"-"后面的内容
+  local dirname
+  dirname="$(basename "$extracted_dir")"
 
-  # 如果 pkg_name 为空或与 dirname 相同，尝试另一种方法
-  if [[ "$pkg_name" == "$dirname" || -z "$pkg_name" ]]; then
-    pkg_name="$(echo "$filename" | sed 's/[-_][0-9].*//' | sed 's/\.tar\..*//')"
-  fi
+  # 从压缩包名反推 pkg 名（最稳）
+  local pkg_name
+  pkg_name="$(echo "$filename" | sed -E 's/\.tar\.(gz|xz|bz2)$//' | sed -E 's/-[0-9].*$//')"
 
-  # 移动并重命名
   mv "$extracted_dir" "${output_dir}/${pkg_name}" || {
-    echo "重命名失败" >&2
+    echo "重命名失败: $dirname -> $pkg_name" >&2
     rm -rf "$tmp_dir"
     return 1
   }
 
-  # 清理
   rm -rf "$tmp_dir"
-  rm -f "$archive"  # 可选：删除原始压缩包
+  rm -f "$archive"
 
   info "解压完成: ${archive} -> ${output_dir}/${pkg_name}"
-  return 0
 }
