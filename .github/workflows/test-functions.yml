@@ -35,7 +35,7 @@ jobs:
 
           pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev )
           for p in "${pkgs[@]}"; do
-            run "apt-get install package: ${p}" apt-get install -y "$p"
+            apt-get install -y "$p" 2>&1
           done
 
           # 检查已安装的版本
