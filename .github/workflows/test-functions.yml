@@ -42,255 +42,255 @@ jobs:
           find /usr -name "isl.h" 2>/dev/null
           info "系统依赖安装完成"
 
-      # - name: Get Dependencies Version
-      #   id: get-versions
-      #   shell: bash
-      #   env:
-      #     GITHUB_WORKSPACE: ${{ github.workspace }}
-      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-      #     DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
-      #   run: |
-      #     set -euo pipefail
-      #     source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-      #     info "GCC 版本: ${GCC_VERSION}"
-      #     run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" env
+      - name: Get Dependencies Version
+        id: get-versions
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+          DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          info "GCC 版本: ${GCC_VERSION}"
+          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" env
 
-      # - name: Download Source Code
-      #   shell: bash
-      #   env:
-      #     GITHUB_WORKSPACE: ${{ github.workspace }}
-      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-      #     LOG_DIR: "${{ github.workspace }}/logs"
-      #   run: |
-      #     set -euo pipefail
-      #     source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+      - name: Download Source Code
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+          LOG_DIR: "${{ github.workspace }}/logs"
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
-      #     export GITHUB_BASE_URL="https://github.com"
-      #     export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+          export GITHUB_BASE_URL="https://github.com"
+          export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
-      #     # optional tuning
-      #     export FORCE_COLOR=1
-      #     mkdir -p "${LOG_DIR}"
-      #     IGNORE_REGEX='array subscript 0 is outside array bounds'
-      #     LOG_TAIL_LINES=80
-      #     FAIL_ON_FATAL_IN_SUCCESS=1
+          # optional tuning
+          export FORCE_COLOR=1
+          mkdir -p "${LOG_DIR}"
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=80
+          FAIL_ON_FATAL_IN_SUCCESS=1
 
-      #     export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-      #     gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-      #     github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
 
-      #     for p in "${gnu_pkgs[@]}";do
-      #       if [[ "${p}" == "gcc" ]]; then
-      #         ver="${GCC_VERSION}"
-      #         echo "下载${p} 源码版本: ${ver}"
-      #         run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-      #         run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-      #       else
-      #         val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-      #         ver=${!val}
-      #         run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-      #         run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-      #       fi
-      #     done
-      #     for p in "${github_pkgs[@]}";do
-      #       case "${p}" in
-      #         mingw-w64)
-      #           ver="${MINGW_W64}"
-      #           github_author="mingw-w64"
-      #           project_name="mingw-w64"
-      #           ;;
-      #         python)
-      #           ver="${PYTHON}"
-      #           github_author="python"
-      #           project_name="cpython"
-      #           ;;
-      #         openssl|sqlite|libffi|pkgconf)
-      #           pkg_name=${p^^}
-      #           ver="${!pkg_name}"
-      #           github_author="${p}"
-      #           project_name="${p}"
-      #           ;;
-      #         ninja)
-      #           ver="${NINJA}"
-      #           github_author="ninja-build"
-      #           project_name="ninja"
-      #           ;;
-      #         cmake)
-      #           ver="${CMAKE}"
-      #           github_author="Kitware"
-      #           project_name="CMake"
-      #           ;;
-      #         expat)
-      #           ver="${EXPAT}"
-      #           github_author="libexpat"
-      #           project_name="libexpat"
-      #           ;;
-      #         *)
-      #           error "未知的 GitHub 包: ${p}"
-      #           exit 1
-      #           ;;
-      #       esac
-      #       if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
-      #         tail="${p}-${ver}.tar.gz"
-      #       elif [[ "${p}" == "sqlite" ]]; then
-      #         tail="version-${ver}.tar.gz"
-      #       elif [[ "${p}" == "expat" ]]; then
-      #         tail="R_${ver//./_}.tar.gz"
-      #       else
-      #         tail="v${ver}.tar.gz"
-      #       fi
-      #       run "下载${p}-${ver} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
-      #       run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
-      #     done
+          for p in "${gnu_pkgs[@]}";do
+            if [[ "${p}" == "gcc" ]]; then
+              ver="${GCC_VERSION}"
+              echo "下载${p} 源码版本: ${ver}"
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            else
+              val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+              ver=${!val}
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+            fi
+          done
+          for p in "${github_pkgs[@]}";do
+            case "${p}" in
+              mingw-w64)
+                ver="${MINGW_W64}"
+                github_author="mingw-w64"
+                project_name="mingw-w64"
+                ;;
+              python)
+                ver="${PYTHON}"
+                github_author="python"
+                project_name="cpython"
+                ;;
+              openssl|sqlite|libffi|pkgconf)
+                pkg_name=${p^^}
+                ver="${!pkg_name}"
+                github_author="${p}"
+                project_name="${p}"
+                ;;
+              ninja)
+                ver="${NINJA}"
+                github_author="ninja-build"
+                project_name="ninja"
+                ;;
+              cmake)
+                ver="${CMAKE}"
+                github_author="Kitware"
+                project_name="CMake"
+                ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
+              *)
+                error "未知的 GitHub 包: ${p}"
+                exit 1
+                ;;
+            esac
+            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            elif [[ "${p}" == "sqlite" ]]; then
+              tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "expat" ]]; then
+              tail="R_${ver//./_}.tar.gz"
+            else
+              tail="v${ver}.tar.gz"
+            fi
+            run "下载${p}-${ver} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
+            run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
+          done
 
-      #     info "下载与解压步骤完成"
+          info "下载与解压步骤完成"
 
-      # - name: Build cross
-      #   shell: bash
-      #   env:
-      #     GITHUB_WORKSPACE: ${{ github.workspace }}
-      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-      #   run: |
-      #     set -euo pipefail
-      #     source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+      - name: Build cross
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
-      #     # tuning
-      #     export LOG_DIR="${GITHUB_WORKSPACE}/logs"
-      #     export FORCE_COLOR=1
-      #     mkdir -p "${LOG_DIR}"
-      #     IGNORE_REGEX='array subscript 0 is outside array bounds'
-      #     LOG_TAIL_LINES=120
-      #     FAIL_ON_FATAL_IN_SUCCESS=1
+          # tuning
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          export FORCE_COLOR=1
+          mkdir -p "${LOG_DIR}"
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=120
+          FAIL_ON_FATAL_IN_SUCCESS=1
 
-      #     export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-      #     export BUILD_DIR="${GITHUB_WORKSPACE}/build-cross"
-      #     export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export BUILD_DIR="${GITHUB_WORKSPACE}/build-cross"
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
 
-      #     # prepare dirs
-      #     for d in "${BUILD_DIR}" "${PREFIX}"; do
-      #       if [ -d "${d}" ]; then
-      #         run "清理目录 ${d}" rm -rf "${d}"
-      #       fi
-      #       run "创建目录 ${d}" mkdir -p "${d}"
-      #     done
+          # prepare dirs
+          for d in "${BUILD_DIR}" "${PREFIX}"; do
+            if [ -d "${d}" ]; then
+              run "清理目录 ${d}" rm -rf "${d}"
+            fi
+            run "创建目录 ${d}" mkdir -p "${d}"
+          done
 
-      #     cd "${BUILD_DIR}"
+          cd "${BUILD_DIR}"
 
-      #     export BUILD="x86_64-pc-linux-gnu"
-      #     export HOST="x86_64-pc-linux-gnu"
-      #     export TARGET="x86_64-w64-mingw32"
+          export BUILD="x86_64-pc-linux-gnu"
+          export HOST="x86_64-pc-linux-gnu"
+          export TARGET="x86_64-w64-mingw32"
 
-      #     pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
-      #     for p in "${pkgs[@]}"; do
-      #       val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-      #       info "准备取消相关环境变量 ${val}"
-      #       unset "${val}"
-      #     done
-      #     unset MINGW_W64 gcc_version
+          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          for p in "${pkgs[@]}"; do
+            val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+            info "准备取消相关环境变量 ${val}"
+            unset "${val}"
+          done
+          unset MINGW_W64 gcc_version
 
-      #     # binutils
-      #     run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
-      #     run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" --prefix="${PREFIX}" --target="${TARGET}" --host="${HOST}" --build="${BUILD}" --disable-multilib --disable-werror
-      #     run "binutils: make" make -j$(nproc)
-      #     run "binutils: make install" make install
+          # binutils
+          run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
+          run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" --prefix="${PREFIX}" --target="${TARGET}" --host="${HOST}" --build="${BUILD}" --disable-multilib --disable-werror
+          run "binutils: make" make -j$(nproc)
+          run "binutils: make install" make install
 
-      #     export PATH="${PREFIX}/bin:${PATH}"
+          export PATH="${PREFIX}/bin:${PATH}"
 
-      #     # mingw headers
-      #     run "构建 mingw-w64 headers: setup dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
-      #     run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --enable-sdk=all --enable-secure-api --enable-idl --disable-multilib
-      #     run "mingw-headers: make" make -j$(nproc)
-      #     run "mingw-headers: install" make install
-      #     run "ls prefix target dir" ls -l "${PREFIX}/${TARGET}/"
-      #     run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
+          # mingw headers
+          run "构建 mingw-w64 headers: setup dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --enable-sdk=all --enable-secure-api --enable-idl --disable-multilib
+          run "mingw-headers: make" make -j$(nproc)
+          run "mingw-headers: install" make install
+          run "ls prefix target dir" ls -l "${PREFIX}/${TARGET}/"
+          run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
 
-      #     # gcc stage1
-      #     run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc-stage1-build" && cd "${BUILD_DIR}/gcc-stage1-build"
-      #     run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-      #       --prefix="${PREFIX}" \
-      #       --target="${TARGET}" \
-      #       --host="${HOST}" \
-      #       --build="${BUILD}" \
-      #       --disable-multilib \
-      #       --enable-languages=c \
-      #       --without-headers \
-      #       --disable-shared \
-      #       --disable-threads \
-      #       --disable-libatomic \
-      #       --disable-libgomp \
-      #       --disable-libquadmath \
-      #       --disable-libssp \
-      #       --disable-libvtv \
-      #       --disable-libstdcxx \
-      #       --disable-nls \
-      #       --with-gmp=/usr \
-      #       --with-mpfr=/usr \
-      #       --with-mpc=/usr \
-      #       --with-isl=/usr
+          # gcc stage1
+          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc-stage1-build" && cd "${BUILD_DIR}/gcc-stage1-build"
+          run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --enable-languages=c \
+            --without-headers \
+            --disable-shared \
+            --disable-threads \
+            --disable-libatomic \
+            --disable-libgomp \
+            --disable-libquadmath \
+            --disable-libssp \
+            --disable-libvtv \
+            --disable-libstdcxx \
+            --disable-nls \
+            --with-gmp=/usr \
+            --with-mpfr=/usr \
+            --with-mpc=/usr \
+            --with-isl=/usr
 
-      #     run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
-      #     run "gcc stage1: install-gcc" make install-gcc
+          run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
+          run "gcc stage1: install-gcc" make install-gcc
 
-      #     # set cross toolchain env
-      #     export CC="${PREFIX}/bin/${TARGET}-gcc"
-      #     export CXX="${PREFIX}/bin/${TARGET}-g++"
-      #     export LD="${PREFIX}/bin/${TARGET}-ld"
-      #     export AR="${PREFIX}/bin/${TARGET}-ar"
-      #     export AS="${PREFIX}/bin/${TARGET}-as"
-      #     export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+          # set cross toolchain env
+          export CC="${PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${PREFIX}/bin/${TARGET}-g++"
+          export LD="${PREFIX}/bin/${TARGET}-ld"
+          export AR="${PREFIX}/bin/${TARGET}-ar"
+          export AS="${PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
-      #     # mingw-crt
-      #     run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
-      #     run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --disable-multilib --with-sysroot="${PREFIX}/${TARGET}"
-      #     run "mingw-crt: make" make -j$(nproc)
-      #     run "mingw-crt: install" make install
+          # mingw-crt
+          run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
+          run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --disable-multilib --with-sysroot="${PREFIX}/${TARGET}"
+          run "mingw-crt: make" make -j$(nproc)
+          run "mingw-crt: install" make install
 
-      #     # gcc full build
-      #     run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
-      #     run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build" && cd "${BUILD_DIR}/gcc-full-build"
-      #     run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-      #       --prefix="${PREFIX}" \
-      #       --target="${TARGET}" \
-      #       --host="${HOST}" \
-      #       --build="${BUILD}" \
-      #       --disable-multilib \
-      #       --enable-languages=c,c++ \
-      #       --enable-threads=win32 \
-      #       --enable-shared \
-      #       --enable-static \
-      #       --with-sysroot="${PREFIX}/${TARGET}" \
-      #       --disable-nls \
-      #       --with-gmp=/usr \
-      #       --with-mpfr=/usr \
-      #       --with-mpc=/usr \
-      #       --with-isl=/usr
+          # gcc full build
+          run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
+          run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build" && cd "${BUILD_DIR}/gcc-full-build"
+          run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --enable-languages=c,c++ \
+            --enable-threads=win32 \
+            --enable-shared \
+            --enable-static \
+            --with-sysroot="${PREFIX}/${TARGET}" \
+            --disable-nls \
+            --with-gmp=/usr \
+            --with-mpfr=/usr \
+            --with-mpc=/usr \
+            --with-isl=/usr
 
-      #     export CC="${PREFIX}/bin/${TARGET}-gcc"
-      #     export CXX="${PREFIX}/bin/${TARGET}-g++"
-      #     export LD="${PREFIX}/bin/${TARGET}-ld"
-      #     export AR="${PREFIX}/bin/${TARGET}-ar"
-      #     export AS="${PREFIX}/bin/${TARGET}-as"
-      #     export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+          export CC="${PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${PREFIX}/bin/${TARGET}-g++"
+          export LD="${PREFIX}/bin/${TARGET}-ld"
+          export AR="${PREFIX}/bin/${TARGET}-ar"
+          export AS="${PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
-      #     run "gcc full: make" make -j$(nproc)
-      #     run "gcc full: install" make install
+          run "gcc full: make" make -j$(nproc)
+          run "gcc full: install" make install
 
-      #     info "交叉编译工具链构建完成！"
-      #     info "工具链已安装到：${PREFIX}"
-      #     run "清除构建目录以节省空间" rm -rf "${BUILD_DIR}"
+          info "交叉编译工具链构建完成！"
+          info "工具链已安装到：${PREFIX}"
+          run "清除构建目录以节省空间" rm -rf "${BUILD_DIR}"
 
-      #     # 最后：生成聚合 summary 并打印路径（actions 后续可上传）
-      #     agg="$(aggregate_all_summaries)"
-      #     info "聚合摘要已写入：$agg"
+          # 最后：生成聚合 summary 并打印路径（actions 后续可上传）
+          agg="$(aggregate_all_summaries)"
+          info "聚合摘要已写入：$agg"
 
-      # - name: upload logs
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: build-logs
-      #     path: "${{ github.workspace }}/logs"
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: "${{ github.workspace }}/logs"
 
-      # - name: verify cross compiler
+      - name: verify cross compiler
       #   shell: bash
       #   env:
       #     GITHUB_WORKSPACE: ${{ github.workspace }}
