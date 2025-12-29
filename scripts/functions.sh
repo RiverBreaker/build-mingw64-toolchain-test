@@ -502,9 +502,23 @@ archive_extract() {
   fi
   if [[ "${pkg_name}" == "expat" ]]; then
     info "准备生成 expat configure 脚本"
-    if [[ -f "${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh" ]]; then
-      if bash "./${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh"; then
-        die "生成 expat configure 脚本失败"
+    local buildconf_path="${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh"
+    if [[ -f "${buildconf_path}" ]]; then
+      cd "${output_dir}/${pkg_name}/${pkg_name}" || {
+        rm -rf "$tmp_dir"
+        die "无法进入 expat 目录以生成 configure 脚本"
+      }
+      info "正在执行 buildconf.sh"
+      if ! bash ./buildconf.sh; then
+        echo "生成 expat configure 脚本失败" >&2
+        cd - >/dev/null 2>&1
+        rm -rf "$tmp_dir"
+        return 1
+      fi
+      info "正在执行 buildconf.sh"
+      if ! bash ./buildconf.sh; then
+        echo "生成 expat configure 脚本失败" >&2
+        cd - >/dev/null 2>&1
         rm -rf "$tmp_dir"
         return 1
       fi
