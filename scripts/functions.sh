@@ -515,13 +515,31 @@ archive_extract() {
         rm -rf "$tmp_dir"
         return 1
       fi
-      info "正在执行 buildconf.sh"
-      if ! bash ./buildconf.sh; then
-        echo "生成 expat configure 脚本失败" >&2
+      cd - >/dev/null 2>&1
+      info "expat configure 脚本生成成功"
+    else
+      echo "警告: 未找到 buildconf.sh 脚本: $buildconf_path" >&2
+    fi
+  fi
+  if [[ "${pkg_name}" == "libffi" ]]; then
+    info "准备生成 libffi configure 脚本"
+    local buildconf_path="${output_dir}/${pkg_name}/autogen.sh"
+    if [[ -f "${buildconf_path}" ]]; then
+      cd "${output_dir}/${pkg_name}" || {
+        rm -rf "$tmp_dir"
+        die "无法进入 libffi 目录以生成 configure 脚本"
+      }
+      info "正在执行 autogen.sh"
+      if ! bash ./autogen.sh; then
+        echo "生成 libffi configure 脚本失败" >&2
         cd - >/dev/null 2>&1
         rm -rf "$tmp_dir"
         return 1
       fi
+    cd - >/dev/null 2>&1
+      info "libffi configure 脚本生成成功"
+    else
+      echo "警告: 未找到 autogen.sh 脚本: $buildconf_path" >&2
     fi
   fi
 

@@ -33,7 +33,7 @@ jobs:
 
           run "apt-get update" sudo apt-get update
 
-          pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python3-dev )
+          pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python3-dev tcl tcl-dev )
 
           for p in "${pkgs[@]}"; do
             install_pkg "安装${p}包" "$p"
@@ -595,7 +595,6 @@ jobs:
           run "openssl: configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
             mingw64 \
             --prefix="${OPT_DIR}" \
-            --cross-compile-prefix="${TARGET}-" \
             no-shared \
             no-zlib \
             no-asm \
@@ -609,14 +608,13 @@ jobs:
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
             --build="${BUILD}" \
+            --target="${TARGET}" \
             --enable-static \
             --disable-shared \
             --disable-readline \
-            --disable-dynamic-extensions \
             --disable-fts3 \
             --disable-fts4 \
             --disable-fts5 \
-            --disable-json1 \
             --disable-rtree \
             --disable-session
           run "sqlite: make" make -j$(nproc)
@@ -638,10 +636,10 @@ jobs:
           PYTHON_CONFIGURE_FLAGS+=" --without-ensurepip"
           PYTHON_CONFIGURE_FLAGS+=" --disable-test-modules"
           PYTHON_CONFIGURE_FLAGS+=" --with-system-expat"
-          PYTHON_CONFIGURE_FLAGS+=" --with-system-ffi"
           PYTHON_CONFIGURE_FLAGS+=" --without-c-locale-coercion"
           PYTHON_CONFIGURE_FLAGS+=" --without-doc-strings"
           PYTHON_CONFIGURE_FLAGS+=" --without-pymalloc"
+          PYTHON_CONFIGURE_FLAGS+=" --with-build-python=$(which python3)"
 
           # 设置依赖路径
           export CPPFLAGS="-I${OPT_DIR}/include"
@@ -661,7 +659,7 @@ jobs:
           run "mingw-w64-libmangle: install" make install
 
           # tools (包含 widl 等工具，安装到 ${PREFIX})
-          for p in gendef genidl genpeimg widl genlib; do
+          for p in gendef genidl genpeimg widl; do
             run "准备 mingw-w64-tools ${p} build dir" mkdir -p "${BUILD_DIR}/mingw-w64-tools-${p}-build" && cd "${BUILD_DIR}/mingw-w64-tools-${p}-build"
             run "mingw-w64-tools: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-tools/${p}/configure" \
               --prefix="${PREFIX}" \
@@ -686,13 +684,7 @@ jobs:
             --enable-languages=c,c++,fortran,objc,obj-c++,lto \
             --enable-shared \
             --enable-static \
-            --enable-threads=posix \
-            --enable-libatomic \
-            --enable-libgomp \
-            --enable-libquadmath \
-            --enable-libssp \
-            --enable-libstdcxx \
-            --enable-version-specific-runtime-libs \
+            --enable-threads=win32 \
             --enable-lto \
             --enable-plugins \
             --disable-nls \
@@ -719,8 +711,8 @@ jobs:
           run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build" && cd "${BUILD_DIR}/gdb-build"
 
           # 设置Python路径
-          export PYTHON_PATH="${PYTHON_OPT_DIR}/bin"
           export PYTHON_LIB_PATH="${PYTHON_OPT_DIR}/lib"
+          export PYTHON_INCLUDE_PATH="${PYTHON_OPT_DIR}/include"
 
           # 设置expat路径
           export EXPAT_DIR="${OPT_DIR}/expat"
@@ -735,13 +727,16 @@ jobs:
             --enable-targets=all \
             --with-python="${PYTHON_PATH}" \
             --with-expat \
-            --with-libiconv-prefix="${PREFIX}" \
+            --with-libiconv-prefix="$(which python3)" \
             --with-system-zlib \
             --disable-werror \
+            --disable-nls \
             --enable-source-highlight \
             --enable-tui \
             --with-curses \
-            --with-system-readline
+            --with-system-readline \
+            CPPFLAGS="-I${PYTHON_INCLUDE_PATH}" \
+            LDFLAGS="-L${PYTHON_LIB_PATH}"
 
           run "gdb: make" make -j$(nproc)
           run "gdb: make install" make install
