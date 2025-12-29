@@ -460,6 +460,16 @@ jobs:
             run "${d}: make install" make install
           done
 
+          # =========== build zlib static ======================
+          run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
+          run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --static
+          run "zlib: make" make -j$(nproc)
+          run "zlib: make install" make install
+
           # =========== 2. binutils (安装到 ${PREFIX}) ===========
           run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
           run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
@@ -531,29 +541,22 @@ jobs:
           run "mingw-crt: install" make install
 
           # =========== 6. mingw-w64 winpthreads (安装到 ${TARGET_DIR}) ===========
-          run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build" && cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
-          run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
-            --prefix="${TARGET_DIR}" \
-            --host="${TARGET}" \
-            --build="${BUILD}" \
-            --disable-shared \
-            --enable-static \
-            --disable-lib32 \
-            --disable-lib64
-          run "mingw-w64-winpthreads: make" make -j$(nproc)
-          run "mingw-w64-winpthreads: install" make install
-
-          # =========== build zlib static ======================
-          run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
-          run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --static
+          # run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build" && cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
+          # run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
+          #   --prefix="${TARGET_DIR}" \
+          #   --host="${TARGET}" \
+          #   --build="${BUILD}" \
+          #   --disable-shared \
+          #   --enable-static \
+          #   --disable-lib32 \
+          #   --disable-lib64
+          # run "mingw-w64-winpthreads: make" make -j$(nproc)
+          # run "mingw-w64-winpthreads: install" make install
 
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
           run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"
-          run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
+          run "准备生成 expat configure 脚本" ./"${SOURCE_CODE_DIR}/expat/expat/buildconf.sh"
+          run "expat: configure" "${SOURCE_CODE_DIR}/expat/expat/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
             --build="${BUILD}" \
