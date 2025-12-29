@@ -508,8 +508,7 @@ archive_extract() {
         rm -rf "$tmp_dir"
         return 1
       }
-    else
-      warn "expat buildconf.sh 脚本未找到，跳过"
+      fi
     fi
   fi
 
