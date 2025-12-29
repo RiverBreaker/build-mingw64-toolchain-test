@@ -155,5 +155,5 @@ jobs:
             ls -hl "${SOURCE_CODE_DIR}/${p}"
           done
           ls -lh "${SOURCE_CODE_DIR}"
-          tree -L 3 -a "${SOURCE_CODE_DIR}"
+          tree -L 3 -a "${SOURCE_CODE_DIR}/expat"
 

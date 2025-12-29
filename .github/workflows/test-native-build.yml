@@ -195,7 +195,13 @@ jobs:
 
           # binutils
           run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
-          run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" --prefix="${PREFIX}" --target="${TARGET}" --host="${HOST}" --build="${BUILD}" --disable-multilib --disable-werror
+          run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
+            --prefix="${PREFIX}" \
+            --target="${TARGET}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --disable-werror
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
 
@@ -496,7 +502,10 @@ jobs:
             --enable-lto \
             --enable-plugins \
             --with-sysroot="${TARGET_DIR}" \
-            --enable-install-libiberty
+            --enable-install-libiberty \
+            --disable-nls \
+            --disable-rpath \
+            --enable-host-shared=no
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
 
