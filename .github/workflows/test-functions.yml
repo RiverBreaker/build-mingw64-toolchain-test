@@ -180,10 +180,10 @@ jobs:
           export HOST="x86_64-pc-linux-gnu"
           export TARGET="x86_64-w64-mingw32"
 
-          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb python openssl sqlite ninja cmake libffi pkgconf expat )
+          info "准备清理环境变量"
           for p in "${pkgs[@]}"; do
             val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-            info "准备取消相关环境变量 ${val}"
             unset "${val}"
           done
           unset MINGW_W64 gcc_version
@@ -283,12 +283,6 @@ jobs:
           agg="$(aggregate_all_summaries)"
           info "聚合摘要已写入：$agg"
 
-      - name: upload logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: "${{ github.workspace }}/logs"
-
       - name: verify cross compiler
         shell: bash
         env:
@@ -364,173 +358,179 @@ jobs:
           rm -f test-cross.c test-cross.cpp test-windows.c \
                 test-cross.exe test-cross-cpp.exe test-windows.exe
 
-      # - name: Build native
-      #   shell: bash
-      #   env:
-      #     GITHUB_WORKSPACE: ${{ github.workspace }}
-      #     GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-      #   run: |
-      #     set -euo pipefail
-      #     source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+      - name: Build native
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
-      #     # params / tuning
-      #     export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-      #     export BUILD_DIR="${GITHUB_WORKSPACE}/build-native"
-      #     export CROSS_PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
-      #     export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
+          # params / tuning
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export BUILD_DIR="${GITHUB_WORKSPACE}/build-native"
+          export CROSS_PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
 
-      #     export LOG_DIR="${GITHUB_WORKSPACE}/logs"
-      #     export FORCE_COLOR=1
-      #     mkdir -p "${LOG_DIR}"
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          export FORCE_COLOR=1
+          mkdir -p "${LOG_DIR}"
 
-      #     IGNORE_REGEX='array subscript 0 is outside array bounds'
-      #     LOG_TAIL_LINES=300
-      #     FAIL_ON_FATAL_IN_SUCCESS=1
+          IGNORE_REGEX='array subscript 0 is outside array bounds'
+          LOG_TAIL_LINES=300
+          FAIL_ON_FATAL_IN_SUCCESS=1
 
-      #     # prepare top-level dirs
-      #     for d in "${BUILD_DIR}" "${PREFIX}"; do
-      #       if [ -d "${d}" ]; then
-      #         run "清理目录 ${d}" rm -rf "${d}"
-      #       fi
-      #       run "创建目录 ${d}" mkdir -p "${d}"
-      #     done
+          # prepare top-level dirs
+          for d in "${BUILD_DIR}" "${PREFIX}"; do
+            if [ -d "${d}" ]; then
+              run "清理目录 ${d}" rm -rf "${d}"
+            fi
+            run "创建目录 ${d}" mkdir -p "${d}"
+          done
 
-      #     cd "${BUILD_DIR}"
+          cd "${BUILD_DIR}"
 
-      #     # triples and PATH (use cross toolchain to build mingw-native artifacts)
-      #     export BUILD="x86_64-pc-linux-gnu"
-      #     export HOST="x86_64-w64-mingw32"
-      #     export TARGET="x86_64-w64-mingw32"
-      #     export PATH="${CROSS_PREFIX}/bin:${PATH}"
+          # triples and PATH (use cross toolchain to build mingw-native artifacts)
+          export BUILD="x86_64-pc-linux-gnu"
+          export HOST="x86_64-w64-mingw32"
+          export TARGET="x86_64-w64-mingw32"
+          export PATH="${CROSS_PREFIX}/bin:${PATH}"
 
-      #     export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
-      #     export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
-      #     export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
-      #     export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
-      #     export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
-      #     export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
+          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
+          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
+          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
+          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
 
-      #     # ---------- binutils (native for mingw) ----------
-      #     run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
-      #     run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
-      #       --prefix="${PREFIX}" \
-      #       --host="${HOST}" \
-      #       --build="${BUILD}" \
-      #       --enable-static \
-      #       --disable-shared
-      #     run "binutils: make" make -j$(nproc)
-      #     run "binutils: make install" make install
+          # ---------- binutils (native for mingw) ----------
+          run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
+          run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
+            --prefix="${PREFIX}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --enable-static \
+            --disable-shared
+          run "binutils: make" make -j$(nproc)
+          run "binutils: make install" make install
 
-      #     # ---------- build dependencies: gmp mpfr mpc isl ----------
-      #     for d in gmp mpfr mpc isl; do
-      #       run "准备 ${d} build dir" mkdir -p "${BUILD_DIR}/${d}-build" && cd "${BUILD_DIR}/${d}-build"
+          # ---------- build dependencies: gmp mpfr mpc isl ----------
+          for d in gmp mpfr mpc isl; do
+            run "准备 ${d} build dir" mkdir -p "${BUILD_DIR}/${d}-build" && cd "${BUILD_DIR}/${d}-build"
 
-      #       DEP_FLAGS=""
-      #       if [[ "$d" == "mpfr" ]]; then
-      #         DEP_FLAGS="--with-gmp=${PREFIX}"
-      #       elif [[ "$d" == "mpc" ]]; then
-      #         DEP_FLAGS="--with-gmp=${PREFIX} --with-mpfr=${PREFIX}"
-      #       elif [[ "$d" == "isl" ]]; then
-      #         DEP_FLAGS="--with-gmp-prefix=${PREFIX}"
-      #       fi
+            DEP_FLAGS=""
+            if [[ "$d" == "mpfr" ]]; then
+              DEP_FLAGS="--with-gmp=${PREFIX}"
+            elif [[ "$d" == "mpc" ]]; then
+              DEP_FLAGS="--with-gmp=${PREFIX} --with-mpfr=${PREFIX}"
+            elif [[ "$d" == "isl" ]]; then
+              DEP_FLAGS="--with-gmp-prefix=${PREFIX}"
+            fi
 
-      #       run "${d}: configure" "${SOURCE_CODE_DIR}/${d}/configure" \
-      #         --prefix="${PREFIX}" \
-      #         --host="${HOST}" \
-      #         --build="${BUILD}" \
-      #         ${DEP_FLAGS} \
-      #         --enable-static \
-      #         --disable-shared
+            run "${d}: configure" "${SOURCE_CODE_DIR}/${d}/configure" \
+              --prefix="${PREFIX}" \
+              --host="${HOST}" \
+              --build="${BUILD}" \
+              ${DEP_FLAGS} \
+              --enable-static \
+              --disable-shared
 
-      #       run "${d}: make" make -j$(nproc)
-      #       run "${d}: make install" make install
-      #     done
-      #     unset DEP_FLAGS
+            run "${d}: make" make -j$(nproc)
+            run "${d}: make install" make install
+          done
+          unset DEP_FLAGS
 
-      #     # ---------- mingw-w64 headers ----------
-      #     run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
-      #     run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
-      #       --prefix="${PREFIX}/${TARGET}" \
-      #       --host="${TARGET}" \
-      #       --build="${BUILD}" \
-      #       --enable-sdk=all \
-      #       --enable-secure-api \
-      #       --enable-idl \
-      #       --disable-multilib
-      #     run "mingw-headers: make" make -j$(nproc)
-      #     run "mingw-headers: install" make install
+          # ---------- mingw-w64 headers ----------
+          run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
+            --prefix="${PREFIX}/${TARGET}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --enable-sdk=all \
+            --enable-secure-api \
+            --enable-idl \
+            --disable-multilib
+          run "mingw-headers: make" make -j$(nproc)
+          run "mingw-headers: install" make install
 
-      #     # ensure include symlink (same pattern as cross)
-      #     run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
+          # ensure include symlink (same pattern as cross)
+          run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
 
-      #     # ---------- gcc stage1 (bootstrap minimal gcc for target) ----------
-      #     run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build" && cd "${BUILD_DIR}/gcc1-build"
-      #     run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-      #       --prefix="${PREFIX}" \
-      #       --host="${HOST}" \
-      #       --build="${BUILD}" \
-      #       --disable-multilib \
-      #       --enable-languages=c,c++ \
-      #       --without-headers \
-      #       --disable-shared \
-      #       --disable-threads \
-      #       --disable-libatomic \
-      #       --disable-libgomp \
-      #       --disable-libquadmath \
-      #       --disable-libssp \
-      #       --disable-libvtv \
-      #       --disable-libstdcxx \
-      #       --disable-nls \
-      #       --with-gmp="${PREFIX}" \
-      #       --with-mpfr="${PREFIX}" \
-      #       --with-mpc="${PREFIX}" \
-      #       --with-isl="${PREFIX}"
+          # ---------- gcc stage1 (bootstrap minimal gcc for target) ----------
+          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build" && cd "${BUILD_DIR}/gcc1-build"
+          run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --enable-languages=c,c++ \
+            --without-headers \
+            --disable-shared \
+            --disable-threads \
+            --disable-libatomic \
+            --disable-libgomp \
+            --disable-libquadmath \
+            --disable-libssp \
+            --disable-libvtv \
+            --disable-libstdcxx \
+            --disable-nls \
+            --with-gmp="${PREFIX}" \
+            --with-mpfr="${PREFIX}" \
+            --with-mpc="${PREFIX}" \
+            --with-isl="${PREFIX}"
 
-      #     run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
-      #     run "gcc stage1: make install-gcc" make install-gcc
+          run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
+          run "gcc stage1: make install-gcc" make install-gcc
 
-      #     # ---------- mingw-crt ----------
-      #     run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
-      #     run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" \
-      #       --prefix="${PREFIX}/${TARGET}" \
-      #       --host="${TARGET}" \
-      #       --build="${BUILD}" \
-      #       --disable-multilib \
-      #       --with-sysroot="${PREFIX}/${TARGET}"
-      #     run "mingw-crt: make" make -j$(nproc)
-      #     run "mingw-crt: install" make install
+          # ---------- mingw-crt ----------
+          run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
+          run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" \
+            --prefix="${PREFIX}/${TARGET}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --disable-multilib \
+            --with-sysroot="${PREFIX}/${TARGET}"
+          run "mingw-crt: make" make -j$(nproc)
+          run "mingw-crt: install" make install
 
-      #     # ---------- gcc stage2 (full gcc using installed libs/sysroot) ----------
-      #     run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
-      #     run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build" && cd "${BUILD_DIR}/gcc2-build"
-      #     run "gcc stage2: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-      #       --prefix="${PREFIX}" \
-      #       --host="${HOST}" \
-      #       --build="${BUILD}" \
-      #       --target="${TARGET}" \
-      #       --enable-languages=c,c++ \
-      #       --enable-multilib \
-      #       --disable-nls \
-      #       --with-gmp="${PREFIX}" \
-      #       --with-mpfr="${PREFIX}" \
-      #       --with-mpc="${PREFIX}" \
-      #       --with-isl="${PREFIX}"
+          # ---------- gcc stage2 (full gcc using installed libs/sysroot) ----------
+          run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
+          run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build" && cd "${BUILD_DIR}/gcc2-build"
+          run "gcc stage2: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
+            --prefix="${PREFIX}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-languages=c,c++ \
+            --enable-multilib \
+            --disable-nls \
+            --with-gmp="${PREFIX}" \
+            --with-mpfr="${PREFIX}" \
+            --with-mpc="${PREFIX}" \
+            --with-isl="${PREFIX}"
 
-      #     export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
-      #     export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
-      #     export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
-      #     export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
-      #     export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
-      #     export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
+          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
+          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
+          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
+          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
 
-      #     run "gcc stage2: make" make -j$(nproc)
-      #     run "gcc stage2: make install" make install
+          run "gcc stage2: make" make -j$(nproc)
+          run "gcc stage2: make install" make install
 
-      #     # ---------- final summary ----------
-      #     info "构建完成！"
-      #     info "安装目录：${PREFIX}"
-      #     ls -l "${PREFIX}/bin/"
+          # ---------- final summary ----------
+          info "构建完成！"
+          info "安装目录：${PREFIX}"
+          ls -l "${PREFIX}/bin/"
 
-      #     # final aggregate summary
-      #     agg="$(aggregate_all_summaries)"
-      #     info "聚合摘要已写入：$agg"
+          # final aggregate summary
+          agg="$(aggregate_all_summaries)"
+          info "聚合摘要已写入：$agg"
+
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: "${{ github.workspace }}/logs"
