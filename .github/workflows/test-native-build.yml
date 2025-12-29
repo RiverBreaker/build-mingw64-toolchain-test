@@ -33,7 +33,7 @@ jobs:
 
           run "apt-get update" sudo apt-get update
 
-          pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev )
+          pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python-dev )
 
           for p in "${pkgs[@]}"; do
             install_pkg "安装${p}包" "$p"
@@ -77,7 +77,7 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
           gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -124,6 +124,11 @@ jobs:
                 ver="${EXPAT}"
                 github_author="libexpat"
                 project_name="libexpat"
+                ;;
+              zlib)
+                ver="${ZLIB}"
+                github_author="madler"
+                project_name="zlib"
                 ;;
               *)
                 error "未知的 GitHub 包: ${p}"
@@ -537,6 +542,14 @@ jobs:
             --disable-lib64
           run "mingw-w64-winpthreads: make" make -j$(nproc)
           run "mingw-w64-winpthreads: install" make install
+
+          # =========== build zlib static ======================
+          run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
+          run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --static
 
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
           run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"

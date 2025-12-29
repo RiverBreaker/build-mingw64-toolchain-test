@@ -76,7 +76,7 @@ jobs:
           mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
 
           gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat )
+          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -128,6 +128,11 @@ jobs:
                 github_author="libexpat"
                 project_name="libexpat"
                 ;;
+              zlib)
+                ver="${ZLIB}"
+                github_author="madler"
+                project_name="zlib"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
@@ -150,4 +155,5 @@ jobs:
             ls -hl "${SOURCE_CODE_DIR}/${p}"
           done
           ls -lh "${SOURCE_CODE_DIR}"
+          tree -L 3 -a "${SOURCE_CODE_DIR}"
 
