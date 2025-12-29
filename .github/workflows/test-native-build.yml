@@ -812,3 +812,14 @@ jobs:
           info "4. 系统根目录: ${TARGET_DIR}"
           info ""
           info "工具链清单: ${MANIFEST}"
+
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: "${{ github.workspace }}/logs"
+      - name: upload native toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingw-w64-native-toolchain
+          path: "${{ github.workspace }}/mingw-w64-native
