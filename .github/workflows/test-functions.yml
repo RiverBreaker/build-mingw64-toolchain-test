@@ -395,6 +395,13 @@ jobs:
           export BUILD="x86_64-pc-linux-gnu"
           export HOST="x86_64-w64-mingw32"
           export TARGET="x86_64-w64-mingw32"
+          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb python openssl sqlite ninja cmake libffi pkgconf expat )
+          info "准备清理环境变量"
+          for p in "${pkgs[@]}"; do
+            val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+            unset "${val}"
+          done
+          unset MINGW_W64 gcc_version
           export PATH="${CROSS_PREFIX}/bin:${PATH}"
 
           export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
