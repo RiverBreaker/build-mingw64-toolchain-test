@@ -424,6 +424,23 @@ jobs:
           export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
 
           # =========== 1. 核心数学库依赖 (安装到 ${PREFIX}) ===========
+          # =========== 3. mingw-w64 头文件 (安装到 ${TARGET_DIR}) ===========
+          run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
+            --prefix="${TARGET_DIR}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --enable-sdk=all \
+            --enable-secure-api \
+            --enable-idl \
+            --disable-multilib
+          run "mingw-headers: make" make -j$(nproc)
+          run "mingw-headers: install" make install
+
+          # ensure include symlink
+          run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${TARGET_DIR}/mingw"'" && ln -sfn "'"${TARGET_DIR}/include"'" "'"${TARGET_DIR}/mingw/include"'"'
+
+          # =========== 2. libiconv (安装到 ${PREFIX}) ===========
           # libiconv (Windows原生版本)
           run "准备 libiconv build dir" mkdir -p "${BUILD_DIR}/libiconv-build" && cd "${BUILD_DIR}/libiconv-build"
           run "libiconv: configure" "${SOURCE_CODE_DIR}/libiconv/configure" \
@@ -464,8 +481,6 @@ jobs:
           run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
           run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
             --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
             --static
           run "zlib: make" make -j$(nproc)
           run "zlib: make install" make install
@@ -484,22 +499,6 @@ jobs:
             --enable-install-libiberty
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
-
-          # =========== 3. mingw-w64 头文件 (安装到 ${TARGET_DIR}) ===========
-          run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
-          run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
-            --prefix="${TARGET_DIR}" \
-            --host="${TARGET}" \
-            --build="${BUILD}" \
-            --enable-sdk=all \
-            --enable-secure-api \
-            --enable-idl \
-            --disable-multilib
-          run "mingw-headers: make" make -j$(nproc)
-          run "mingw-headers: install" make install
-
-          # ensure include symlink
-          run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${TARGET_DIR}/mingw"'" && ln -sfn "'"${TARGET_DIR}/include"'" "'"${TARGET_DIR}/mingw/include"'"'
 
           # =========== 4. gcc 第一阶段 (bootstrap) ===========
           run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build" && cd "${BUILD_DIR}/gcc1-build"
