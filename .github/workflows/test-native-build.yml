@@ -397,6 +397,13 @@ jobs:
             fi
             run "创建目录 ${d}" mkdir -p "${d}"
           done
+          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb python openssl sqlite ninja cmake libffi pkgconf expat )
+          info "准备清理环境变量"
+          for p in "${pkgs[@]}"; do
+            val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+            unset "${val}"
+          done
+          unset MINGW_W64 gcc_version
 
           cd "${BUILD_DIR}"
 
