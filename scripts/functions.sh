@@ -503,11 +503,10 @@ archive_extract() {
   if [[ "${pkg_name}" == "expat" ]]; then
     info "准备生成 expat configure 脚本"
     if [[ -f "${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh" ]]; then
-      if bash "./${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh" || {
+      if bash "./${output_dir}/${pkg_name}/${pkg_name}/buildconf.sh"; then
         echo "生成 expat configure 脚本失败" >&2
         rm -rf "$tmp_dir"
         return 1
-      }
       fi
     fi
   fi
