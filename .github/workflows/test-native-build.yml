@@ -822,4 +822,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mingw-w64-native-toolchain
-          path: "${{ github.workspace }}/mingw-w64-native
+          path: "${{ github.workspace }}/mingw-w64-native"
