@@ -64,6 +64,9 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
+          info "GCC 版本: ${GCC_VERSION}"
+          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" local
+
           export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
@@ -76,8 +79,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat zlib )
+          gnu_pkgs=( gcc binutils libiconv make readline gdb )
+          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -99,12 +102,7 @@ jobs:
                 github_author="mingw-w64"
                 project_name="mingw-w64"
                 ;;
-              python)
-                ver="${PYTHON}"
-                github_author="python"
-                project_name="cpython"
-                ;;
-              openssl|sqlite|libffi|pkgconf)
+              pkgconf)
                 pkg_name=${p^^}
                 ver="${!pkg_name}"
                 github_author="${p}"
@@ -130,23 +128,26 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
+              pdcurses)
+                ver="${PDCURSES}"
+                github_author="wmcbrine"
+                project_name="PDCurses"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]]; then
               tail="${p}-${ver}.tar.gz"
-            elif [[ "${p}" == "sqlite" ]]; then
-              tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "pdcurses" ]]; then
+              tail="${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz"
             fi
             EXPAT_TAG="R_${ver//./_}"
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/v${ver}/${tail}"
-            elif [[ "${p}" == "expat" ]]; then
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/release/download/${EXPAT_TAG}/${tail}"
+            if [[ "${p}" == "expat" ]]; then
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
             else
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
             fi
@@ -299,81 +300,6 @@ jobs:
           # 最后：生成聚合 summary 并打印路径（actions 后续可上传）
           agg="$(aggregate_all_summaries)"
           info "聚合摘要已写入：$agg"
-
-      - name: verify cross compiler
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-        run: |
-          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
-          export TARGET="x86_64-w64-mingw32"
-
-          ls "${PREFIX}/bin/"
-
-          echo "验证交叉编译器"
-          "${PREFIX}/bin/${TARGET}-gcc" --version
-          "${PREFIX}/bin/${TARGET}-g++" --version
-
-          echo -e "\n7.3 编译简单的C程序（验证生成Windows PE文件）"
-          cat > test-cross.c << 'EOF'
-          #include <stdio.h>
-          int main() {
-              printf("Hello from cross-compiler! This is a Windows executable.\n");
-              return 0;
-          }
-          EOF
-
-          # 使用交叉编译器编译
-          "${PREFIX}/bin/${TARGET}-gcc" test-cross.c -o test-cross.exe
-
-          echo "检查生成的文件类型："
-          file test-cross.exe || true
-          echo "文件应显示为 'PE32+ executable (console) x86-64, for MS Windows'"
-
-          # 在Linux上不能运行这个.exe，但可以检查文件是否存在
-          if [ -f "test-cross.exe" ]; then
-              echo "✓ 成功生成了Windows可执行文件"
-              ls -lh test-cross.exe
-          else
-              echo "✗ 未能生成可执行文件"
-              exit 1
-          fi
-
-          echo -e "\n7.4 编译C++程序（验证C++支持）"
-          cat > test-cross.cpp << 'EOF'
-          #include <iostream>
-          int main() {
-              std::cout << "Hello from C++ cross-compiler!" << std::endl;
-              return 0;
-          }
-          EOF
-
-          "${PREFIX}/bin/${TARGET}-g++" test-cross.cpp -o test-cross-cpp.exe
-
-          echo "检查C++生成的文件类型："
-          file test-cross-cpp.exe || true
-
-          echo -e "\n7.5 验证链接到mingw-w64库"
-          cat > test-windows.c << 'EOF'
-          #include <windows.h>
-          #include <stdio.h>
-          int main() {
-              MessageBoxA(NULL, "Hello from Windows API!", "Test", MB_OK);
-              printf("Message box should have appeared (if run on Windows)\n");
-              return 0;
-          }
-          EOF
-
-          "${PREFIX}/bin/${TARGET}-gcc" test-windows.c -o test-windows.exe \
-            -Wl,--subsystem,windows
-
-          echo "检查Windows GUI程序："
-          file test-windows.exe || true
-
-          echo -e "\n7.6 清理测试文件"
-          rm -f test-cross.c test-cross.cpp test-windows.c \
-                test-cross.exe test-cross-cpp.exe test-windows.exe
 
       - name: Build native
         shell: bash
@@ -572,7 +498,7 @@ jobs:
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
           run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"
           run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
-            --prefix="${OPT_DIR}" \
+            --prefix="${OPT_DIR}/expat" \
             --host="${HOST}" \
             --build="${BUILD}" \
             --enable-static \
@@ -582,33 +508,33 @@ jobs:
           run "expat: make" make -j$(nproc)
           run "expat: make install" make install
 
-          # ====readline 依赖的 libncurses (安装到 ${PREFIX}) ==========
-          run "准备 ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build" && cd "${BUILD_DIR}/ncurses-build"
-          run "ncurses: configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
-            --prefix="${PREFIX}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --without-shared \
-            --without-cxx-shared \
-            --without-ada \
-            --without-termcap \
-            --enable-widec \
-            --disable-stripping
-          run "ncurses: make" make -j$(nproc)
-          run "ncurses: make install" make install
+          # # ====readline 依赖的 libncurses (安装到 ${PREFIX}) ==========
+          # run "准备 pdcurses build dir" mkdir -p "${BUILD_DIR}/pdcurses-build" && cd "${BUILD_DIR}/pdcurses-build"
+          # run "pdcurses: configure" "${SOURCE_CODE_DIR}/pdcurses/configure" \
+          #   --prefix="${PREFIX}" \
+          #   --host="${HOST}" \
+          #   --build="${BUILD}" \
+          #   --without-shared \
+          #   --without-cxx-shared \
+          #   --without-ada \
+          #   --without-termcap \
+          #   --enable-widec \
+          #   --disable-stripping
+          # run "ncurses: make" make -j$(nproc)
+          # run "ncurses: make install" make install
 
-          # =========== 8. readline (安装到 ${PREFIX}) ===========
-          run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build" && cd "${BUILD_DIR}/readline-build"
-          run "readline: configure" "${SOURCE_CODE_DIR}/readline/configure" \
-            --prefix="${PREFIX}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --with-curses \
-            --disable-shared \
-            --enable-static \
-            --disable-stripping
-          run "readline: make" make -j$(nproc)
-          run "readline: make install" make install
+          # # =========== 8. readline (安装到 ${PREFIX}) ===========
+          # run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build" && cd "${BUILD_DIR}/readline-build"
+          # run "readline: configure" "${SOURCE_CODE_DIR}/readline/configure" \
+          #   --prefix="${PREFIX}" \
+          #   --host="${HOST}" \
+          #   --build="${BUILD}" \
+          #   --with-curses \
+          #   --disable-shared \
+          #   --enable-static \
+          #   --disable-stripping
+          # run "readline: make" make -j$(nproc)
+          # run "readline: make install" make install
 
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
@@ -679,11 +605,16 @@ jobs:
 
           # =========== 14. 构建 gdb (带 Python 支持) ===========
           run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build" && cd "${BUILD_DIR}/gdb-build"
-
-          # 设置expat路径
-          export EXPAT_DIR="${OPT_DIR}/expat"
-          export CPPFLAGS="-I${EXPAT_DIR}/include"
-          export LDFLAGS="-L${EXPAT_DIR}/lib"
+          if [ -d "${OPT_DIR}/expat" ]; then
+            info "发现 expat，启用 gdb 的 expat 支持"
+            export CPPFLAGS="-I${OPT_DIR}/expat/include"
+            export LDFLAGS="-L${OPT_DIR}/expat/lib"
+            EXPAT_CFG="--with-expat"
+          else
+            info "未发现 expat，构建时不启用 expat"
+            unset CPPFLAGS LDFLAGS
+            EXPAT_CFG=""
+          fi
 
           run "gdb: configure" "${SOURCE_CODE_DIR}/gdb/configure" \
             --prefix="${PREFIX}" \
@@ -692,17 +623,15 @@ jobs:
             --target="${TARGET}" \
             --enable-targets=all \
             --without-python \
-            --with-expat \
+            ${EXPAT_CFG} \
             --with-libiconv-prefix="${PREFIX}" \
             --with-system-zlib \
             --disable-werror \
-            --disable-nls \
-            --enable-source-highlight \
-            --enable-tui \
-            --with-curses \
-            --with-system-readline
+            --disable-nls
           run "gdb: make" make -j$(nproc)
           run "gdb: make install" make install
+          info "检查 gdb 可执行格式"
+          file "${PREFIX}/bin/${TARGET}-gdb" || true
 
           # =========== 15. 创建环境设置脚本 ===========
           ENV_SCRIPT="${PREFIX}/setup-env.sh"
