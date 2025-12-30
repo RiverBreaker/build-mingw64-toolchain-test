@@ -139,5 +139,12 @@ jobs:
           done
 
           info "下载与解压步骤完成"
+      - name: Check Source Code Directories
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           ls -lh "${SOURCE_CODE_DIR}"
-          tree -L 3 -a "${SOURCE_CODE_DIR}/expat"
+          tree -L 3 -a "${SOURCE_CODE_DIR}"
