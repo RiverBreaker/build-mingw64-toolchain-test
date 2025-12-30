@@ -582,91 +582,6 @@ jobs:
           run "expat: make" make -j$(nproc)
           run "expat: make install" make install
 
-          # =========== 8. 可选：libffi (Python需要，安装到 ${OPT_DIR}/libffi) ===========
-          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build" && cd "${BUILD_DIR}/libffi-build"
-          run "libffi: configure" "${SOURCE_CODE_DIR}/libffi/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --enable-static \
-            --disable-shared \
-            --disable-multi-os-directory \
-            --disable-raw-api \
-            --disable-structs \
-            --disable-types
-          run "libffi: make" make -j$(nproc)
-          run "libffi: make install" make install
-
-          # =========== 9. 可选：openssl (安装到 ${OPT_DIR}/openssl) ===========
-          run "准备 openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build" && cd "${BUILD_DIR}/openssl-build"
-          run "openssl: configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
-            mingw64 \
-            --prefix="${OPT_DIR}" \
-            no-shared \
-            no-zlib \
-            no-asm \
-            no-tests
-          run "openssl: make" make -j$(nproc)
-          run "openssl: make install" make install_sw
-
-          # =========== 10. 可选：sqlite (安装到 ${OPT_DIR}/sqlite) ===========
-          run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
-          run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-static \
-            --disable-shared \
-            --disable-readline \
-            --disable-fts3 \
-            --disable-fts4 \
-            --disable-fts5 \
-            --disable-rtree \
-            --disable-session
-          run "sqlite: make" make -j$(nproc) EXEEXT=
-          run "sqlite: make install" make install
-
-          # =========== 11. Python 最小化构建 (安装到 ${OPT_DIR}/python) ===========
-          PYTHON_OPT_DIR="${OPT_DIR}"
-          run "准备 python build dir" mkdir -p "${BUILD_DIR}/python-build" && cd "${BUILD_DIR}/python-build"
-
-          # 创建Python目录结构
-          mkdir -p "${PYTHON_OPT_DIR}/bin" "${PYTHON_OPT_DIR}/lib" "${PYTHON_OPT_DIR}/include"
-
-          # # 设置Python构建选项 - 最小化配置
-          # PYTHON_CONFIGURE_FLAGS=""
-          # PYTHON_CONFIGURE_FLAGS+=" --prefix=${PYTHON_OPT_DIR}"
-          # PYTHON_CONFIGURE_FLAGS+=" --host=${HOST}"
-          # PYTHON_CONFIGURE_FLAGS+=" --build=${BUILD}"
-          # PYTHON_CONFIGURE_FLAGS+=" --enable-shared"
-          # PYTHON_CONFIGURE_FLAGS+=" --without-ensurepip"
-          # PYTHON_CONFIGURE_FLAGS+=" --disable-test-modules"
-          # PYTHON_CONFIGURE_FLAGS+=" --with-system-expat"
-          # PYTHON_CONFIGURE_FLAGS+=" --without-c-locale-coercion"
-          # PYTHON_CONFIGURE_FLAGS+=" --without-doc-strings"
-          # PYTHON_CONFIGURE_FLAGS+=" --without-pymalloc"
-          # PYTHON_CONFIGURE_FLAGS+=" --with-build-python=$(which python3)"
-
-          # # 设置依赖路径
-          # export CPPFLAGS="-I${OPT_DIR}/include"
-          # export LDFLAGS="-L${OPT_DIR}/lib"
-
-          # run "python: configure" "${SOURCE_CODE_DIR}/python/configure" ${PYTHON_CONFIGURE_FLAGS}
-          # run "python: make" make -j$(nproc) altinstall
-          PYTHON_SOURCE_DIR="${SOURCE_CODE_DIR}/python"
-          cmake  ${PYTHON_SOURCE_DIR} \
-            -DCMAKE_TOOLCHAIN_FILE=../mingw-w64-toolchain.cmake \
-            -DPYTHON_VERSION=3.12.9 \
-            -DPYTHON_APPLY_PATCHES=ON \
-            -DBUILD_LIBPYTHON_SHARED=ON \
-            -DCMAKE_INSTALL_PREFIX=${OPT_DIR} \
-            -DUSE_SYSTEM_ZLIB=ON \
-            -DZLIB_INCLUDE_DIR=${TARGET_DIR}/include \
-            -DZLIB_LIBRARY=${TARGET_DIR}/lib/libz.a
-          cmake --build . -j$(nproc)
-          cmake --install .
-
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
           run "准备 mingw-w64-libmangle build dir" mkdir -p "${BUILD_DIR}/mingw-w64-libmangle-build" && cd "${BUILD_DIR}/mingw-w64-libmangle-build"
@@ -713,7 +628,9 @@ jobs:
             --with-mpc="${PREFIX}" \
             --with-isl="${PREFIX}" \
             --with-system-zlib \
-            --with-sysroot="${TARGET_DIR}"
+            --with-sysroot="${TARGET_DIR}" \
+            CPPFLAGS="-I${OPT_DIR}/include" \
+            LDFLAGS="-L${OPT_DIR}/lib"
 
           # 设置使用新构建的gcc作为编译器
           export CC="${PREFIX}/bin/${TARGET}-gcc"
@@ -731,10 +648,6 @@ jobs:
           # =========== 14. 构建 gdb (带 Python 支持) ===========
           run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build" && cd "${BUILD_DIR}/gdb-build"
 
-          # 设置Python路径
-          export PYTHON_LIB_PATH="${PYTHON_OPT_DIR}/lib"
-          export PYTHON_INCLUDE_PATH="${PYTHON_OPT_DIR}/include"
-
           # 设置expat路径
           export EXPAT_DIR="${OPT_DIR}/expat"
           export CPPFLAGS="-I${EXPAT_DIR}/include"
@@ -746,19 +659,16 @@ jobs:
             --build="${BUILD}" \
             --target="${TARGET}" \
             --enable-targets=all \
-            --with-python="$(which python3)" \
+            --without-python \
             --with-expat \
-            --with-libiconv-prefix="￥{PREFIX}" \
+            --with-libiconv-prefix="${PREFIX}" \
             --with-system-zlib \
             --disable-werror \
             --disable-nls \
             --enable-source-highlight \
             --enable-tui \
             --with-curses \
-            --with-system-readline \
-            CPPFLAGS="-I${PYTHON_INCLUDE_PATH}" \
-            LDFLAGS="-L${PYTHON_LIB_PATH}"
-
+            --with-system-readline
           run "gdb: make" make -j$(nproc)
           run "gdb: make install" make install
 
@@ -859,6 +769,12 @@ jobs:
           info "4. 系统根目录: ${TARGET_DIR}"
           info ""
           info "工具链清单: ${MANIFEST}"
+
+      - name: Tree Native dir
+        shell: bash
+        run: |
+          echo "原生工具链目录结构:"
+          tree -L 3 "${GITHUB_WORKSPACE}/mingw-w64-native" || true
 
       - name: upload logs
         uses: actions/upload-artifact@v4
