@@ -130,7 +130,7 @@ jobs:
             fi
             EXPAT_TAG="R_${ver//./_}"
             if [[ "${p}" == "expat" ]]; then
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/release/download/${EXPAT_TAG}/${tail}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
             else
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
             fi
