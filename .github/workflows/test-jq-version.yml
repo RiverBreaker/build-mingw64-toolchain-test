@@ -146,5 +146,6 @@ jobs:
         run: |
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           ls -lh "${SOURCE_CODE_DIR}"
           tree -L 3 -a "${SOURCE_CODE_DIR}"
