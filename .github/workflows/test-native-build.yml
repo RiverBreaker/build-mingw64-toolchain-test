@@ -725,9 +725,9 @@ jobs:
             --build="${BUILD}" \
             --target="${TARGET}" \
             --enable-targets=all \
-            --with-python="${PYTHON_PATH}" \
+            --with-python="$(which python3)" \
             --with-expat \
-            --with-libiconv-prefix="$(which python3)" \
+            --with-libiconv-prefix="￥{PREFIX}" \
             --with-system-zlib \
             --disable-werror \
             --disable-nls \
