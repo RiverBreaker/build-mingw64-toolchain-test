@@ -41,19 +41,6 @@ jobs:
 
           info "系统依赖安装完成"
 
-      - name: Get Dependencies Version
-        id: get-versions
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-          DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
-        run: |
-          set -euo pipefail
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          info "GCC 版本: ${GCC_VERSION}"
-          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" env
-
       - name: Download Source Code
         shell: bash
         env:
