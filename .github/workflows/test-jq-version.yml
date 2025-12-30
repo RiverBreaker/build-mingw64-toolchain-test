@@ -55,6 +55,7 @@ jobs:
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
           # optional tuning
+          LOG_DIR="${GITHUB_WORKSPACE}/logs"
           export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
