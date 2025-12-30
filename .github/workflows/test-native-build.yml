@@ -135,16 +135,22 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
-            elif [[ "${p}" == "expat" ]]; then
-              tail="R_${ver//./_}.tar.gz"
             else
               tail="v${ver}.tar.gz"
             fi
-            run "下载${p}-${ver} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
+            EXPAT_TAG="R_${ver//./_}"
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/v${ver}/${tail}"
+            elif [[ "${p}" == "expat" ]]; then
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/release/download/${EXPAT_TAG}/${tail}"
+            else
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            fi
+            run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
 
@@ -428,6 +434,8 @@ jobs:
           export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
           export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
           export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
+          export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
+          export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
 
           # =========== 1. 核心数学库依赖 (安装到 ${PREFIX}) ===========
           # =========== 3. mingw-w64 头文件 (安装到 ${TARGET_DIR}) ===========
@@ -563,8 +571,7 @@ jobs:
 
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
           run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"
-          run "准备生成 expat configure 脚本" ./"${SOURCE_CODE_DIR}/expat/expat/buildconf.sh"
-          run "expat: configure" "${SOURCE_CODE_DIR}/expat/expat/configure" \
+          run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
             --build="${BUILD}" \
@@ -617,7 +624,7 @@ jobs:
             --disable-fts5 \
             --disable-rtree \
             --disable-session
-          run "sqlite: make" make -j$(nproc)
+          run "sqlite: make" make -j$(nproc) EXEEXT=
           run "sqlite: make install" make install
 
           # =========== 11. Python 最小化构建 (安装到 ${OPT_DIR}/python) ===========
@@ -627,26 +634,38 @@ jobs:
           # 创建Python目录结构
           mkdir -p "${PYTHON_OPT_DIR}/bin" "${PYTHON_OPT_DIR}/lib" "${PYTHON_OPT_DIR}/include"
 
-          # 设置Python构建选项 - 最小化配置
-          PYTHON_CONFIGURE_FLAGS=""
-          PYTHON_CONFIGURE_FLAGS+=" --prefix=${PYTHON_OPT_DIR}"
-          PYTHON_CONFIGURE_FLAGS+=" --host=${HOST}"
-          PYTHON_CONFIGURE_FLAGS+=" --build=${BUILD}"
-          PYTHON_CONFIGURE_FLAGS+=" --enable-shared"
-          PYTHON_CONFIGURE_FLAGS+=" --without-ensurepip"
-          PYTHON_CONFIGURE_FLAGS+=" --disable-test-modules"
-          PYTHON_CONFIGURE_FLAGS+=" --with-system-expat"
-          PYTHON_CONFIGURE_FLAGS+=" --without-c-locale-coercion"
-          PYTHON_CONFIGURE_FLAGS+=" --without-doc-strings"
-          PYTHON_CONFIGURE_FLAGS+=" --without-pymalloc"
-          PYTHON_CONFIGURE_FLAGS+=" --with-build-python=$(which python3)"
+          # # 设置Python构建选项 - 最小化配置
+          # PYTHON_CONFIGURE_FLAGS=""
+          # PYTHON_CONFIGURE_FLAGS+=" --prefix=${PYTHON_OPT_DIR}"
+          # PYTHON_CONFIGURE_FLAGS+=" --host=${HOST}"
+          # PYTHON_CONFIGURE_FLAGS+=" --build=${BUILD}"
+          # PYTHON_CONFIGURE_FLAGS+=" --enable-shared"
+          # PYTHON_CONFIGURE_FLAGS+=" --without-ensurepip"
+          # PYTHON_CONFIGURE_FLAGS+=" --disable-test-modules"
+          # PYTHON_CONFIGURE_FLAGS+=" --with-system-expat"
+          # PYTHON_CONFIGURE_FLAGS+=" --without-c-locale-coercion"
+          # PYTHON_CONFIGURE_FLAGS+=" --without-doc-strings"
+          # PYTHON_CONFIGURE_FLAGS+=" --without-pymalloc"
+          # PYTHON_CONFIGURE_FLAGS+=" --with-build-python=$(which python3)"
 
-          # 设置依赖路径
-          export CPPFLAGS="-I${OPT_DIR}/include"
-          export LDFLAGS="-L${OPT_DIR}/lib"
+          # # 设置依赖路径
+          # export CPPFLAGS="-I${OPT_DIR}/include"
+          # export LDFLAGS="-L${OPT_DIR}/lib"
 
-          run "python: configure" "${SOURCE_CODE_DIR}/python/configure" ${PYTHON_CONFIGURE_FLAGS}
-          run "python: make" make -j$(nproc) altinstall
+          # run "python: configure" "${SOURCE_CODE_DIR}/python/configure" ${PYTHON_CONFIGURE_FLAGS}
+          # run "python: make" make -j$(nproc) altinstall
+          PYTHON_SOURCE_DIR="${SOURCE_CODE_DIR}/python"
+          cmake  ${PYTHON_SOURCE_DIR} \
+            -DCMAKE_TOOLCHAIN_FILE=../mingw-w64-toolchain.cmake \
+            -DPYTHON_VERSION=3.12.9 \
+            -DPYTHON_APPLY_PATCHES=ON \
+            -DBUILD_LIBPYTHON_SHARED=ON \
+            -DCMAKE_INSTALL_PREFIX=${OPT_DIR} \
+            -DUSE_SYSTEM_ZLIB=ON \
+            -DZLIB_INCLUDE_DIR=${TARGET_DIR}/include \
+            -DZLIB_LIBRARY=${TARGET_DIR}/lib/libz.a
+          cmake --build . -j$(nproc)
+          cmake --install .
 
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
@@ -681,7 +700,7 @@ jobs:
             --host="${HOST}" \
             --build="${BUILD}" \
             --target="${TARGET}" \
-            --enable-languages=c,c++,fortran,objc,obj-c++,lto \
+            --enable-languages=c,c++,fortran \
             --enable-shared \
             --enable-static \
             --enable-threads=win32 \
@@ -703,6 +722,8 @@ jobs:
           export AR="${PREFIX}/bin/${TARGET}-ar"
           export AS="${PREFIX}/bin/${TARGET}-as"
           export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+          export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
+          export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
 
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install
