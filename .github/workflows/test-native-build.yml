@@ -555,8 +555,8 @@ jobs:
 
           run "恢复使用新构建的binutils" export PATH="${PREFIX}/bin:${PATH}"
           run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build" && cd "${BUILD_DIR}/gcc2-build"
-          info "取消 cross 工具链环境变量"
-          unset CC CXX LD AR AS RANLIB
+          # info "取消 cross 工具链环境变量"
+          # unset CC CXX LD AR AS RANLIB
 
           run "gcc stage2: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
@@ -579,12 +579,12 @@ jobs:
             --with-sysroot="${TARGET_DIR}"
 
           # 设置使用新构建的gcc作为编译器
-          export CC="${PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${PREFIX}/bin/${TARGET}-g++"
-          export LD="${PREFIX}/bin/${TARGET}-ld"
-          export AR="${PREFIX}/bin/${TARGET}-ar"
-          export AS="${PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
+          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
+          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
+          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
+          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
           export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
           export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
 
