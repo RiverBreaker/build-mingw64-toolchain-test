@@ -141,7 +141,7 @@ jobs:
           ls -lh "${SOURCE_CODE_DIR}"
           tar -xf "${SOURCE_CODE_DIR}/expat-2.5.0.tar.gz" -C "${SOURCE_CODE_DIR}"
           ls -lh "${SOURCE_CODE_DIR}"
-          
+
 
           info "下载与解压步骤完成"
       - name: Check Source Code Directories
@@ -154,3 +154,9 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           ls -lh "${SOURCE_CODE_DIR}"
           tree -L 3 -a "${SOURCE_CODE_DIR}"
+      - name: upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            "${{ github.workspace }}/logs"
