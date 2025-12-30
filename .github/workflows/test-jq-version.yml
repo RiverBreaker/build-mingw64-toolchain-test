@@ -157,6 +157,5 @@ jobs:
       - name: upload logs
         uses: actions/upload-artifact@v4
         with:
-          name: logs
-          path: |
-            "${{ github.workspace }}/logs"
+          name: build-logs
+          path: "${{ github.workspace }}/logs"
