@@ -582,6 +582,34 @@ jobs:
           run "expat: make" make -j$(nproc)
           run "expat: make install" make install
 
+          # ====readline 依赖的 libncurses (安装到 ${PREFIX}) ==========
+          run "准备 ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build" && cd "${BUILD_DIR}/ncurses-build"
+          run "ncurses: configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
+            --prefix="${PREFIX}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --without-shared \
+            --without-cxx-shared \
+            --without-ada \
+            --without-termcap \
+            --enable-widec \
+            --disable-stripping
+          run "ncurses: make" make -j$(nproc)
+          run "ncurses: make install" make install
+
+          # =========== 8. readline (安装到 ${PREFIX}) ===========
+          run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build" && cd "${BUILD_DIR}/readline-build"
+          run "readline: configure" "${SOURCE_CODE_DIR}/readline/configure" \
+            --prefix="${PREFIX}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --with-curses \
+            --disable-shared \
+            --enable-static \
+            --disable-stripping
+          run "readline: make" make -j$(nproc)
+          run "readline: make install" make install
+
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
           run "准备 mingw-w64-libmangle build dir" mkdir -p "${BUILD_DIR}/mingw-w64-libmangle-build" && cd "${BUILD_DIR}/mingw-w64-libmangle-build"
@@ -605,6 +633,12 @@ jobs:
           done
 
           # =========== 13. gcc 第二阶段 (完整版本) ===========
+
+          export ZLIB_INCLUDE="-I${OPT_DIR}/include"
+          export ZLIB_LIBS="-L${OPT_DIR}/lib -lz"
+          export CPPFLAGS="-I${ZLIB_INCLUDE}"
+          export LDFLAGS="-L${ZLIB_LIBS}"
+
           run "恢复使用新构建的binutils" export PATH="${PREFIX}/bin:${PATH}"
           run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build" && cd "${BUILD_DIR}/gcc2-build"
           info "取消 cross 工具链环境变量"
@@ -628,9 +662,7 @@ jobs:
             --with-mpc="${PREFIX}" \
             --with-isl="${PREFIX}" \
             --with-system-zlib \
-            --with-sysroot="${TARGET_DIR}" \
-            CPPFLAGS="-I${OPT_DIR}/include" \
-            LDFLAGS="-L${OPT_DIR}/lib"
+            --with-sysroot="${TARGET_DIR}"
 
           # 设置使用新构建的gcc作为编译器
           export CC="${PREFIX}/bin/${TARGET}-gcc"

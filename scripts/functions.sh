@@ -330,6 +330,10 @@ export_versions_from_json() {
     norm_key="$(echo "$key" | sed 's/[^A-Za-z0-9_]/_/g' | tr '[:lower:]' '[:upper:]')"
 
     case "$mode" in
+      local|step-only)
+        # write to local env
+        export "$norm_key"="$raw_val"
+        ;;
       env)
         # write to GITHUB_ENV if present, else export in current shell
         if [[ -n "${GITHUB_ENV:-}" ]]; then

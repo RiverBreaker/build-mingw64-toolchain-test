@@ -49,51 +49,35 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "GCC 版本: ${GCC_VERSION}"
-          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" env
-
-      - name: Print Dependencies Version
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-        run: |
-          set -euo pipefail
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" local
 
           export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
 
           # optional tuning
-          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
           export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
           LOG_TAIL_LINES=80
           FAIL_ON_FATAL_IN_SUCCESS=1
 
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          mkdir -p "${SOURCE_CODE_DIR}" "${GITHUB_WORKSPACE}/logs"
-
-          gnu_pkgs=( gcc binutils libiconv make termcap ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 python openssl sqlite ninja cmake libffi pkgconf expat zlib )
+          gnu_pkgs=( gcc binutils libiconv make ncurses readline gdb )
+          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
-              version="${GCC_VERSION}"
-              echo "下载${p} 源码版本: ${version}"
-              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${version}/${p}-${version}.tar.gz" "${SOURCE_CODE_DIR}"
-              echo "解压${p} 源码版本: ${GCC_VERSION}"
-              run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${GCC_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+              ver="${GCC_VERSION}"
+              echo "下载${p} 源码版本: ${ver}"
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
             else
-              ver="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-              echo "下载${p} 源码版本: ${!ver}"
-              run "下载${p} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
-              echo "解压${p} 源码版本: ${!ver}"
-              run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${!ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
+              ver=${!val}
+              run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
             fi
-            du -sh "${SOURCE_CODE_DIR}/${p}"
-            ls -hl "${SOURCE_CODE_DIR}/${p}"
           done
           for p in "${github_pkgs[@]}";do
             case "${p}" in
@@ -138,22 +122,25 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]]; then
+            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
-            elif [[ "${p}" == "expat" ]]; then
-              tail="R_${ver//./_}.tar.gz"
             else
               tail="v${ver}.tar.gz"
             fi
-            echo "下载${p} 源码版本: ${ver}"
-            run "下载${p} 源码" curl_download "${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}" "${SOURCE_CODE_DIR}"
-            echo "解压${p} 源码版本: ${ver}"
-            run "解压${p} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
-            du -sh "${SOURCE_CODE_DIR}/${p}"
-            ls -hl "${SOURCE_CODE_DIR}/${p}"
+            EXPAT_TAG="R_${ver//./_}"
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/v${ver}/${tail}"
+            elif [[ "${p}" == "expat" ]]; then
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/release/download/${EXPAT_TAG}/${tail}"
+            else
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            fi
+            run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
+            run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
+
+          info "下载与解压步骤完成"
           ls -lh "${SOURCE_CODE_DIR}"
           tree -L 3 -a "${SOURCE_CODE_DIR}/expat"
-
