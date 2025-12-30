@@ -123,17 +123,13 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "openssl" ]] || [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]]; then
               tail="${p}-${ver}.tar.gz"
-            elif [[ "${p}" == "sqlite" ]]; then
-              tail="version-${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz"
             fi
             EXPAT_TAG="R_${ver//./_}"
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "expat" ]]; then
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/v${ver}/${tail}"
-            elif [[ "${p}" == "expat" ]]; then
+            if [[ "${p}" == "expat" ]]; then
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/release/download/${EXPAT_TAG}/${tail}"
             else
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
