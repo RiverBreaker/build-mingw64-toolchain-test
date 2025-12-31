@@ -142,6 +142,9 @@ jobs:
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
             ls -lh "${SOURCE_CODE_DIR}/"
+            if [[ -f "${SOURCE_CODE_DIR}/${tail}" ]]; then
+              du -sh "${SOURCE_CODE_DIR}/${tail}"
+            fi
             du -sh "${SOURCE_CODE_DIR}/${p}"
           done
 
