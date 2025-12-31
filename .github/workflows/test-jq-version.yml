@@ -123,7 +123,7 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]]; then
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
