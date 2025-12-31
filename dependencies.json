@@ -3,16 +3,21 @@
     "13.2.0": {
       "mingw-w64": "12.0.0",
       "binutils": "2.40",
-      "expat": "2.5.0",
-      "readline": "8.2",
-      "pdcurses": "3.9",
+      "zlib": "1.2.13",
       "libiconv": "1.18",
+      "libffi": "3.4.2",
+      "gdbm": "1.23",
+      "sqlite3": "3.42.0",
+      "openssl": "3.2.0",
+      "python": "3.12.4",
+      "expat": "2.5.0",
+      "ncurses": "6.3",
+      "readline": "8.2",
       "gdb": "13.2",
       "make": "4.4.1",
       "cmake": "3.27.5",
       "pkgconf": "2.5.0",
-      "ninja": "1.11.1",
-      "zlib": "1.2.12"
+      "ninja": "1.11.1"
     },
     "12.3.0": {
       "zlib_version": "1.2.12",
