@@ -49,7 +49,7 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           info "GCC 版本: ${GCC_VERSION}"
-          run "获取组件版本信息" export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" local
+          export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" local
 
           export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
