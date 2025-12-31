@@ -65,7 +65,7 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
           gnu_pkgs=( gcc binutils libiconv make ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib cmake python openssl sqlite libffi )
+          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
