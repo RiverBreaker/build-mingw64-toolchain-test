@@ -73,11 +73,13 @@ jobs:
               echo "下载${p} 源码版本: ${ver}"
               run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
               run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              du -sh "${SOURCE_CODE_DIR}/${p}"
             else
               val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
               ver=${!val}
               run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
               run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
+              du -sh "${SOURCE_CODE_DIR}/${p}"
             fi
           done
           for p in "${github_pkgs[@]}";do
