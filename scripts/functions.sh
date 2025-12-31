@@ -333,6 +333,7 @@ export_versions_from_json() {
       local|step-only)
         # write to local env
         export "$norm_key"="$raw_val"
+        echo "$norm_key=$raw_val"
         ;;
       env)
         # write to GITHUB_ENV if present, else export in current shell
