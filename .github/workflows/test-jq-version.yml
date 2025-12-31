@@ -94,7 +94,7 @@ jobs:
                 ;;
               openssl|sqlite|libffi|pkgconf)
                 pkg_name=${p^^}
-                ver="${pkg_name}"
+                ver="${!pkg_name}"
                 github_author="${p}"
                 project_name="${p}"
                 ;;
