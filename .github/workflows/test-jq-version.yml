@@ -182,14 +182,11 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          cd "${SOURCE_CODE_DIR}/sqlite"
-
-          gcc tool/mksourceid.c     -o mksourceid
-          gcc tool/mkkeywordhash.c -o mkkeywordhash
-          gcc tool/lemon.c         -o lemon
-
-          tclsh tool/mksqlite3h.tcl . > src/sqlite3.h
-          tclsh tool/mksqlite3c.tcl --srcdir src > sqlite3.c
+          LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          mkdir -p sqlite-build && cd sqlite-build
+          "${SOURCE_CODE_DIR}/sqlite/configure"
+          make
+          make tcl
 
       - name: check sqlite dir
         shell: bash
@@ -199,7 +196,8 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite"
+          LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite-build" > ${LOG_DIR}/tree.log
 
 
       - name: upload logs
