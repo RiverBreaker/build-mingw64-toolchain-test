@@ -638,9 +638,15 @@ jobs:
           run "expat: make install" make install
 
           # pdcurses (opt)
-          run "准备 pdcurses build dir" mkdir -p "${BUILD_DIR}/pdcurses-build" && cd "${BUILD_DIR}/pdcurses-build"
-          run "pdcurses: configure" "${SOURCE_CODE_DIR}/pdcurses/configure" \
-
+          run "准备 pdcurses build dir" cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
+          run "pdcurses: configure" make WIDE=Y UTF8=Y
+          for n in ncurses ncursesw;do
+            cp pdcurses.a "${OPT_DIR}/lib/lib${n}.a"
+          done
+          cd "${SOURCE_CODE_DIR}/pdcurses"
+          for h in curses.h panel.h;do
+            cp "${h}" "${OPT_DIR}/include"
+          done
 
           # gdbm (opt)
           run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch"
@@ -748,7 +754,7 @@ jobs:
           export CXXFLAGS="${CXXFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
           export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
 
-          export LDFLAGS="${LDFLAGS} -lz"
+          export LDFLAGS="${LDFLAGS} -lz -lcurses"
           export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -D_WIN32_WINNT=0x0601"
           run "gdb: configure" "${SOURCE_CODE_DIR}/gdb/configure" \
             --prefix="${PREFIX}" \
