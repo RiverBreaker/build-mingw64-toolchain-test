@@ -438,11 +438,7 @@ jobs:
           run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
           run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
             --prefix="${OPT_DIR}" \
-            --static \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
+            --static
           run "zlib: make" make -j$(nproc)
           run "zlib: make install" make install
 
