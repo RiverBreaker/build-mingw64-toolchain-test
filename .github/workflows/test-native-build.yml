@@ -650,6 +650,7 @@ jobs:
             FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran" \
             WIDE=Y UTF8=Y
           cp pdcurses.a "${OPT_DIR}/lib/libcursesw.a"
+          cp pdcurses.a "${OPT_DIR}/lib/libcurses.a"
           cd "${SOURCE_CODE_DIR}/pdcurses"
           for h in curses.h panel.h;do
             cp "${h}" "${OPT_DIR}/include"
