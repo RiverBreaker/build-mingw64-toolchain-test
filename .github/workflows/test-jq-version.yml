@@ -188,8 +188,8 @@ jobs:
           gcc tool/mkkeywordhash.c -o mkkeywordhash
           gcc tool/lemon.c         -o lemon
 
-          tclsh tool/mksqlite3h.tcl . > sqlite3.h
-          tclsh tool/mksqlite3c.tcl > sqlite3.c
+          tclsh tool/mksqlite3h.tcl . > src/sqlite3.h
+          tclsh tool/mksqlite3c.tcl --srcdir src > sqlite3.c
 
       - name: check sqlite dir
         shell: bash
