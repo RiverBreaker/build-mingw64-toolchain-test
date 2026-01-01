@@ -386,11 +386,6 @@ jobs:
           run "mingw-headers: make" make -j$(nproc)
           run "mingw-headers: install" make install
 
-          export CFLAGS="${CFLAGS} -I${TARGET_DIR}/include"
-          export CXXFLAGS="${CXXFLAGS} -I${TARGET_DIR}/include"
-          export LDFLAGS="${LDFLAGS} -L${TARGET_DIR}/lib"
-          export CPPFLAGS="-I${TARGET_DIR}/include"
-
           # ensure include symlink
           run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${TARGET_DIR}/mingw"'" && ln -sfn "'"${TARGET_DIR}/include"'" "'"${TARGET_DIR}/mingw/include"'"'
 
@@ -769,6 +764,7 @@ jobs:
             --build="${BUILD}" \
             --target="${TARGET}" \
             --enable-shared \
+            --with-build-python=$(which python3) \
             --with-system-expat \
             --with-system-ffi \
             --disable-tkinter \
@@ -807,7 +803,7 @@ jobs:
             --disable-werror \
             --disable-win32-registry \
             --disable-rpath \
-            --disable-gdbtk
+            --disable-gdbtk \
             --disable-shared \
             --enable-static \
             --disable-nls \
@@ -843,6 +839,7 @@ jobs:
           tree -L 3 "${GITHUB_WORKSPACE}/mingw-w64-native" || true
 
       - name: upload logs
+        if: always() || cancelled() || failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
