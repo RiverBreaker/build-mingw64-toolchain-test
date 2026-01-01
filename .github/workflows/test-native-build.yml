@@ -386,6 +386,11 @@ jobs:
           run "mingw-headers: make" make -j$(nproc)
           run "mingw-headers: install" make install
 
+          export CFLAGS="${CFLAGS} -I${TARGET_DIR}/include"
+          export CXXFLAGS="${CXXFLAGS} -I${TARGET_DIR}/include"
+          export LDFLAGS="${LDFLAGS} -L${TARGET_DIR}/lib"
+          export CPPFLAGS="-I${TARGET_DIR}/include"
+
           # ensure include symlink
           run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${TARGET_DIR}/mingw"'" && ln -sfn "'"${TARGET_DIR}/include"'" "'"${TARGET_DIR}/mingw/include"'"'
 
@@ -613,14 +618,6 @@ jobs:
           run "gcc stage2: make install" make install
 
           # =========== 准备构建python的依赖 ===============
-          # libffi (opt)
-
-          # openssl (opt)
-
-          # sqlite (opt)
-
-          # python (opt)
-
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
           run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"
           run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
@@ -639,15 +636,160 @@ jobs:
           run "expat: make install" make install
 
           # ncurses (opt)
+          run "准备 ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build" && cd "${BUILD_DIR}/ncurses-build"
+          run "ncurses: configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --without-ada \
+            --with-cxx \
+            --without-pthread \
+            --enable-pc-files \
+            --with-pkg-config \
+            --with-pkg-config-libdir="${OPT_DIR}/lib/pkgconfig" \
+            --disable-rpath \
+            --enable-colorfgbg \
+            --disable-symlinks \
+            --enable-warnings \
+            --enable-assertions \
+            --disable-home-terminfo \
+            --enable-database \
+            --enable-sp-funcs \
+            --enable-term-driver \
+            --enable-getcap-cache \
+            --enable-interop \
+            --enable-widec \
+            --without-trace \
+            CFLAGS="${CFLAGS} -D__USE_MINGW_ACCESS" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
+          run "ncurses: make" make -j$(nproc)
+          run "ncurses: make install" make install
 
           # readline (opt)
+          run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build" && cd "${BUILD_DIR}/readline-build"
+          run "readline: configure" "${SOURCE_CODE_DIR}/readline/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-shared \
+            --enable-static \
+            --enable-shared \
+            --disable-static \
+            --without-curses \
+            CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
+          run "readline: make" make -j$(nproc)
+          run "readline: make install" make install
+
+          # gdbm (opt)
+          run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
+          run "gdbm: configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-shared \
+            --disable-static \
+            --enable-libgdbm-compat \
+            CFLAGS="${CFLAGS}  -fcommon" \
+            CXXFLAGS="${CXXFLAGS} -fcommon" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
+          run "gdbm: make" make -j$(nproc)
+          run "gdbm: make install" make install
+
+          # libffi (opt)
+          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build" && cd "${BUILD_DIR}/libffi-build"
+          run "libffi: configure" "${SOURCE_CODE_DIR}/libffi/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-static \
+            --enable-shared \
+            CFLAGS="${CFLAGS}" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
+          run "libffi: make" make -j$(nproc)
+          run "libffi: make install" make install
+
+          # openssl (opt)
+          run "准备 openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build" && cd "${BUILD_DIR}/openssl-build"
+          run "openssl: configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --libdir="${OPT_DIR}/lib" \
+            --openssldir="${OPT_DIR}/ssl" \
+            threads shared zlib \
+            enable-camellia \
+            enable-capieng \
+            enable-idea \
+            enable-mdc2 \
+            enable-rc5 \
+            enable-rfc3779 \
+            enable-ec_nistp_64_gcc_128 \
+            -D__MINGW_USE_VC2005_COMPAT \
+            -DOPENSSLBIN="${OPT_DIR}/bin" \
+            mingw64 \
+            CFLAGS="${CFLAGS}" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
+
+          # sqlite (opt)
+          run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
+          run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --enable-threadsafe \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${CFLAGS}" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE"
+          run "sqlite: make" make -j$(nproc)
+          run "sqlite: make install" make install
+
+          # python (opt)
+          run "准备 python build dir" mkdir -p "${BUILD_DIR}/python-build" && cd "${BUILD_DIR}/python-build"
+          run "python: configure" "${SOURCE_CODE_DIR}/python/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-shared \
+            --with-system-expat \
+            --with-system-ffi \
+            --disable-tkinter \
+            --enable-loadable-sqlite-extensions \
+            --without-ensurepip \
+            --without-c-locale-coercion \
+            --enable-optimizations \
+            CFLAGS="${CFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            CXXFLAGS="${CXXFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            OPENSSL_LIBS="-lcrypto -lssl"
+          run "python: make" make -j$(nproc)
+          run "python: make install" make install
 
           # =========== 14. 构建 gdb (不带 Python 支持) ===========
           run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build" && cd "${BUILD_DIR}/gdb-build"
 
-          export CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon -D_WIN32_WINNT=0x0601"
-
-          EXPAT_CFG="--with-expat"
+          export CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -fcommon -D_WIN32_WINNT=0x0601"
+          export CXXFLAGS="${CXXFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
+          export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
 
           export LDFLAGS="${LDFLAGS} -lz"
           export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -D_WIN32_WINNT=0x0601"
@@ -655,19 +797,19 @@ jobs:
             --prefix="${PREFIX}" \
             --host="${HOST}" \
             --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-targets=all \
-            --without-python \
-            ${EXPAT_CFG} \
-            --with-libiconv-prefix="${TARGET_DIR}" \
+            --enable-targets="${TARGET}" \
+            --with-python="${OPT_DIR}/bin/python3.exe" \
+            --enable-64-bit-bfd \
+            --with-expat \
+            --with-libiconv \
             --with-system-zlib \
-            --without-readline \
-            --disable-tui \
-            --without-curses \
+            --enable-tui \
             --disable-werror \
+            --disable-win32-registry \
+            --disable-rpath \
+            --disable-gdbtk
             --disable-shared \
             --enable-static \
-            --disable-sim \
             --disable-nls \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
