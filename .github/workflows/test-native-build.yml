@@ -639,7 +639,16 @@ jobs:
 
           # pdcurses (opt)
           run "准备 pdcurses build dir" cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
-          run "pdcurses: configure" make WIDE=Y UTF8=Y
+          run "pdcurses: configure" make \
+            CC="${CROSS_PREFIX}/bin/${TARGET}-gcc" \
+            CXX="${CROSS_PREFIX}/bin/${TARGET}-g++" \
+            AR="${CROSS_PREFIX}/bin/${TARGET}-ar" \
+            AS="${CROSS_PREFIX}/bin/${TARGET}-as" \
+            RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib" \
+            STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip" \
+            WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres" \
+            FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran" \
+            WIDE=Y UTF8=Y
           cp pdcurses.a "${OPT_DIR}/lib/libcurses.a"
           cd "${SOURCE_CODE_DIR}/pdcurses"
           for h in curses.h panel.h;do
