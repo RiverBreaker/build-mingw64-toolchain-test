@@ -207,3 +207,9 @@ jobs:
         with:
           name: build-logs
           path: "${{ github.workspace }}/logs"
+
+      - name: upload sqlite
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite
+          path: "${{ github.workspace }}/sqlite-build/sqlite-autoconf*.tar.gz"
