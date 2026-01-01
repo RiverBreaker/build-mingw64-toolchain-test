@@ -719,7 +719,7 @@ jobs:
 
           # sqlite (opt)
           run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
-          run "准备 sqlite 先行版" "${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball
+          run "准备 sqlite 先行版" "${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation CC="gcc" CXX="g++" && make && make amalgamation-tarball
           run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
           SQLITE_VER=$(echo "$SQLITE_VERSION" | awk '{gsub(/[^0-9]/, "", $0); printf("%07d", $0)}')
           run "解压 sqlite-autoconf 源码" tar -xf "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
