@@ -640,9 +640,7 @@ jobs:
           # pdcurses (opt)
           run "准备 pdcurses build dir" cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
           run "pdcurses: configure" make WIDE=Y UTF8=Y
-          for n in ncurses ncursesw;do
-            cp pdcurses.a "${OPT_DIR}/lib/lib${n}.a"
-          done
+          cp pdcurses.a "${OPT_DIR}/lib/libcurses.a"
           cd "${SOURCE_CODE_DIR}/pdcurses"
           for h in curses.h panel.h;do
             cp "${h}" "${OPT_DIR}/include"
