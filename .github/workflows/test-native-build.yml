@@ -33,7 +33,7 @@ jobs:
 
           run "apt-get update" sudo apt-get update
 
-          pkgs=( build-essential liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python3-dev tcl tcl-dev )
+          pkgs=( build-essential automake autoconf libtool m4 liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python3-dev tcl tcl-dev )
 
           for p in "${pkgs[@]}"; do
             install_pkg "安装${p}包" "$p"
@@ -717,6 +717,7 @@ jobs:
 
           # sqlite (opt)
           run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
+          run "准备 sqlite 先行版" 
           run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -724,7 +725,9 @@ jobs:
             --enable-threadsafe \
             --enable-shared \
             --disable-static \
-            CFLAGS="${CFLAGS}" \
+            BUILD_CC="gcc" \
+            CC="${CROSS_PREFIX}/bin/${TARGET}-gcc" \
+            CFLAGS="${CFLAGS} -D_WIN32_WINNT=0x0600" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
             CPPFLAGS="${CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE"

@@ -29,12 +29,15 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
 
           info "开始安装系统依赖（apt-get）"
+          export DEBIAN_FRONTEND=noninteractive
 
           run "apt-get update" sudo apt-get update
 
-          pkgs="git wget tar jq base64"
+          pkgs=( build-essential automake autoconf libtool m4 liblzma-dev nasm libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev python3 python3-dev tcl tcl-dev )
 
-          run "apt-get install packages" bash -lc 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y '"$pkgs"
+          for p in "${pkgs[@]}"; do
+            install_pkg "安装${p}包" "$p"
+          done
 
           info "系统依赖安装完成"
 
@@ -159,6 +162,7 @@ jobs:
           done
 
           info "下载与解压步骤完成"
+
       - name: Check Source Code Directories
         shell: bash
         env:
@@ -169,6 +173,35 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           ls -lh "${SOURCE_CODE_DIR}"
           tree -L 3 -a "${SOURCE_CODE_DIR}"
+
+      - name: make sqlite autoconf
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          cd "${SOURCE_CODE_DIR}/sqlite"
+
+          gcc tool/mksourceid.c     -o mksourceid
+          gcc tool/mkkeywordhash.c -o mkkeywordhash
+          gcc tool/lemon.c         -o lemon
+
+          tclsh tool/mksqlite3h.tcl . > sqlite3.h
+          tclsh tool/mksqlite3c.tcl . > sqlite3.c
+
+      - name: check sqlite dir
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite"
+          
+
       - name: upload logs
         uses: actions/upload-artifact@v4
         with:
