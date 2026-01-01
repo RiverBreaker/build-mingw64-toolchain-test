@@ -189,7 +189,7 @@ jobs:
           gcc tool/lemon.c         -o lemon
 
           tclsh tool/mksqlite3h.tcl . > sqlite3.h
-          tclsh tool/mksqlite3c.tcl . > sqlite3.c
+          tclsh tool/mksqlite3c.tcl > sqlite3.c
 
       - name: check sqlite dir
         shell: bash
@@ -200,7 +200,7 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite"
-          
+
 
       - name: upload logs
         uses: actions/upload-artifact@v4
