@@ -67,8 +67,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv make ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi )
+          gnu_pkgs=( gcc binutils libiconv make gdbm gdb )
+          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi pdcurses )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -125,6 +125,11 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
+              pdcurses)
+                ver="${PDCURSES}"
+                github_author="wmcbrine"
+                project_name="PDCurses"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
@@ -134,6 +139,8 @@ jobs:
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "pdcurses" ]]; then
+              tail="${ver}.tar.gz" # pdcurses
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
@@ -630,59 +637,13 @@ jobs:
           run "expat: make" make -j$(nproc)
           run "expat: make install" make install
 
-          # ncurses (opt)
-          run "准备 ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build" && cd "${BUILD_DIR}/ncurses-build"
-          run "ncurses: configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --without-ada \
-            --with-cxx \
-            --without-pthread \
-            --enable-pc-files \
-            --with-pkg-config \
-            --with-pkg-config-libdir="${OPT_DIR}/lib/pkgconfig" \
-            --disable-rpath \
-            --enable-colorfgbg \
-            --disable-symlinks \
-            --enable-warnings \
-            --enable-assertions \
-            --disable-home-terminfo \
-            --enable-database \
-            --enable-sp-funcs \
-            --enable-term-driver \
-            --enable-getcap-cache \
-            --enable-interop \
-            --enable-widec \
-            --without-trace \
-            CFLAGS="${CFLAGS} -D__USE_MINGW_ACCESS" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "ncurses: make" make -j$(nproc)
-          run "ncurses: make install" make install
+          # pdcurses (opt)
+          run "准备 pdcurses build dir" mkdir -p "${BUILD_DIR}/pdcurses-build" && cd "${BUILD_DIR}/pdcurses-build"
+          run "pdcurses: configure" "${SOURCE_CODE_DIR}/pdcurses/configure" \
 
-          # readline (opt)
-          run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build" && cd "${BUILD_DIR}/readline-build"
-          run "readline: configure" "${SOURCE_CODE_DIR}/readline/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-shared \
-            --enable-static \
-            --enable-shared \
-            --disable-static \
-            --without-curses \
-            CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "readline: make" make -j$(nproc)
-          run "readline: make install" make install
 
           # gdbm (opt)
+          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch"
           run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
           run "gdbm: configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
             --prefix="${OPT_DIR}" \

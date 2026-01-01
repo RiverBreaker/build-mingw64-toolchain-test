@@ -64,8 +64,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv make ncurses readline gdbm gdb )
-          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi )
+          gnu_pkgs=( gcc binutils libiconv make gdbm gdb )
+          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi pdcurses )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -122,6 +122,11 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
+              pdcurses)
+                ver="${PDCURSES}"
+                github_author="wmcbrine"
+                project_name="PDCurses"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
@@ -131,6 +136,8 @@ jobs:
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
               tail="version-${ver}.tar.gz"
+            elif [[ "${p}" == "pdcurses" ]]; then
+              tail="${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
