@@ -135,6 +135,9 @@ jobs:
                 exit 1
                 ;;
             esac
+            if [[ "${p}" == "sqlite" ]]; then
+              echo "SQLITE_VERSION=${ver}" >> "${GITHUB_ENV}"
+            fi
             if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
               tail="${p}-${ver}.tar.gz"
             elif [[ "${p}" == "sqlite" ]]; then
@@ -160,7 +163,6 @@ jobs:
             # fi
             # du -sh "${SOURCE_CODE_DIR}/${p}"
           done
-
           info "下载与解压步骤完成"
 
       - name: Build cross
@@ -717,7 +719,10 @@ jobs:
 
           # sqlite (opt)
           run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
-          run "准备 sqlite 先行版" 
+          run "准备 sqlite 先行版" "${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball
+          run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
+          SQLITE_VER=$(echo "$SQLITE_VERSION" | awk '{gsub(/[^0-9]/, "", $0); printf("%07d", $0)}')
+          run "解压 sqlite-autoconf 源码" tar -xf "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
           run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -725,8 +730,6 @@ jobs:
             --enable-threadsafe \
             --enable-shared \
             --disable-static \
-            BUILD_CC="gcc" \
-            CC="${CROSS_PREFIX}/bin/${TARGET}-gcc" \
             CFLAGS="${CFLAGS} -D_WIN32_WINNT=0x0600" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
