@@ -6,7 +6,7 @@
       "zlib": "1.2.13",
       "libiconv": "1.18",
       "libffi": "3.4.2",
-      "gdbm": "1.23",
+      "gdbm": "1.19",
       "sqlite": "3.42.0",
       "openssl": "3.2.0",
       "python": "3.12.4",
