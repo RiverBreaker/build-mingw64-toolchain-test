@@ -198,7 +198,6 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           LOG_DIR="${GITHUB_WORKSPACE}/logs"
-          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite-build" > ${LOG_DIR}/tree.log
           ls -lh "${SOURCE_CODE_DIR}"
           find "${SOURCE_CODE_DIR}" -type f -name "sqlite-autoconf*.tar.gz" -exec du -sh {} \;
 
