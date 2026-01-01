@@ -773,6 +773,7 @@ jobs:
             --enable-64-bit-bfd \
             --with-expat \
             --with-libiconv \
+            --with-curses \
             --with-system-zlib \
             --enable-tui \
             --disable-werror \
