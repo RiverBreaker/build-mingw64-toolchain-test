@@ -667,7 +667,7 @@ jobs:
             --disable-werror \
             --disable-shared \
             --enable-static \
-            --deisable-sim \
+            --disable-sim \
             --disable-nls \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
