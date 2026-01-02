@@ -197,9 +197,12 @@ jobs:
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          mkdir -p ${SOURCE_CODE_DIR}/sqlite-releases
           LOG_DIR="${GITHUB_WORKSPACE}/logs"
           ls -lh "${SOURCE_CODE_DIR}"
           find "${SOURCE_CODE_DIR}" -type f -name "sqlite-autoconf*.tar.gz" -exec du -sh {} \;
+          tar -xf "${SOURCE_CODE_DIR}/sqlite-autoconf*.tar.gz" -C "${SOURCE_CODE_DIR}/sqlite-releases"
+          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite-autoconf*"
 
 
       - name: upload logs
