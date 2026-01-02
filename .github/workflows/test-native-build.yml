@@ -209,7 +209,8 @@ jobs:
           unset MINGW_W64 gcc_version
 
           # binutils
-          run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
+          run "构建 binutils: configure" mkdir -p "${BUILD_DIR}/binutils-build"
+          cd "${BUILD_DIR}/binutils-build"
           run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
             --prefix="${PREFIX}" \
             --target="${TARGET}" \
@@ -223,7 +224,8 @@ jobs:
           export PATH="${PREFIX}/bin:${PATH}"
 
           # mingw headers
-          run "构建 mingw-w64 headers: setup dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "构建 mingw-w64 headers: setup dir" mkdir -p "${BUILD_DIR}/mingw-headers-build"
+          cd "${BUILD_DIR}/mingw-headers-build"
           run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --enable-sdk=all --enable-secure-api --enable-idl --disable-multilib
           run "mingw-headers: make" make -j$(nproc)
           run "mingw-headers: install" make install
@@ -231,7 +233,8 @@ jobs:
           run "ensure mingw include symlink" bash -lc 'mkdir -p "'"${PREFIX}/${TARGET}/mingw"'" && ln -sfn "'"${PREFIX}/${TARGET}/include"'" "'"${PREFIX}/${TARGET}/mingw/include"'"'
 
           # gcc stage1
-          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc-stage1-build" && cd "${BUILD_DIR}/gcc-stage1-build"
+          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc-stage1-build"
+          cd "${BUILD_DIR}/gcc-stage1-build"
           run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --target="${TARGET}" \
@@ -266,14 +269,16 @@ jobs:
           export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
 
           # mingw-crt
-          run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
+          run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build"
+          cd "${BUILD_DIR}/mingw-crt-build"
           run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" --prefix="${PREFIX}/${TARGET}" --host="${TARGET}" --build="${BUILD}" --disable-multilib --with-sysroot="${PREFIX}/${TARGET}"
           run "mingw-crt: make" make -j$(nproc)
           run "mingw-crt: install" make install
 
           # gcc full build
           run "取消 cross 工具链环境变量" unset CC CXX LD AR AS RANLIB
-          run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build" && cd "${BUILD_DIR}/gcc-full-build"
+          run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build"
+          cd "${BUILD_DIR}/gcc-full-build"
           run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --target="${TARGET}" \
@@ -379,7 +384,8 @@ jobs:
 
           # =========== 1. 核心数学库依赖 (安装到 ${PREFIX}) ===========
           # =========== 3. mingw-w64 头文件 (安装到 ${TARGET_DIR}) ===========
-          run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build" && cd "${BUILD_DIR}/mingw-headers-build"
+          run "准备 mingw-headers build dir" mkdir -p "${BUILD_DIR}/mingw-headers-build"
+          cd "${BUILD_DIR}/mingw-headers-build"
           run "mingw-headers: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-headers/configure" \
             --prefix="${TARGET_DIR}" \
             --host="${TARGET}" \
@@ -400,7 +406,8 @@ jobs:
 
           # =========== 2. libiconv (安装到 ${PREFIX}) ===========
           # libiconv (Windows原生版本)
-          run "准备 libiconv build dir" mkdir -p "${BUILD_DIR}/libiconv-build" && cd "${BUILD_DIR}/libiconv-build"
+          run "准备 libiconv build dir" mkdir -p "${BUILD_DIR}/libiconv-build"
+          cd "${BUILD_DIR}/libiconv-build"
           run "libiconv: configure" "${SOURCE_CODE_DIR}/libiconv/configure" \
             --prefix="${TARGET_DIR}" \
             --host="${HOST}" \
@@ -416,7 +423,8 @@ jobs:
           run "libiconv: make install" make install
           # 这些是gcc的直接依赖，需要安装在主目录
           for d in gmp mpfr mpc isl; do
-            run "准备 ${d} build dir" mkdir -p "${BUILD_DIR}/${d}-build" && cd "${BUILD_DIR}/${d}-build"
+            run "准备 ${d} build dir" mkdir -p "${BUILD_DIR}/${d}-build"
+            cd "${BUILD_DIR}/${d}-build"
 
             DEP_FLAGS=""
             if [[ "$d" == "mpfr" ]]; then
@@ -444,7 +452,8 @@ jobs:
           done
 
           # =========== build zlib static ======================
-          run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build" && cd "${BUILD_DIR}/zlib-build"
+          run "准备 zlib build dir" mkdir -p "${BUILD_DIR}/zlib-build"
+          cd "${BUILD_DIR}/zlib-build"
           run "zlib: configure" "${SOURCE_CODE_DIR}/zlib/configure" \
             --prefix="${OPT_DIR}" \
             --static
@@ -460,7 +469,8 @@ jobs:
           export CPPFLAGS="-I${ZLIB_INCLUDE}"
 
           # =========== 2. binutils (安装到 ${PREFIX}) ===========
-          run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build" && cd "${BUILD_DIR}/binutils-build"
+          run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build"
+          cd "${BUILD_DIR}/binutils-build"
           run "binutils: configure" "${SOURCE_CODE_DIR}/binutils/configure" \
             --prefix="${PREFIX}" \
             --host="${HOST}" \
@@ -482,7 +492,8 @@ jobs:
           run "binutils: make install" make install
 
           # =========== 4. gcc 第一阶段 (bootstrap) ===========
-          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build" && cd "${BUILD_DIR}/gcc1-build"
+          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build"
+          cd "${BUILD_DIR}/gcc1-build"
           run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --host="${HOST}" \
@@ -514,7 +525,8 @@ jobs:
           run "gcc stage1: make install-gcc" make install-gcc
 
           # =========== 5. mingw-w64 CRT (安装到 ${TARGET_DIR}) ===========
-          run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build" && cd "${BUILD_DIR}/mingw-crt-build"
+          run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build"
+          cd "${BUILD_DIR}/mingw-crt-build"
           run "mingw-crt: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-crt/configure" \
             --prefix="${TARGET_DIR}" \
             --host="${TARGET}" \
@@ -529,7 +541,8 @@ jobs:
           run "mingw-crt: install" make install
 
           # =========== mingw-w64-winpthreads =================
-          run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build" && cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
+          run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build"
+          cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
           run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
             --prefix="${TARGET_DIR}" \
             --host="${TARGET}" \
@@ -548,7 +561,8 @@ jobs:
 
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
-          run "准备 mingw-w64-libmangle build dir" mkdir -p "${BUILD_DIR}/mingw-w64-libmangle-build" && cd "${BUILD_DIR}/mingw-w64-libmangle-build"
+          run "准备 mingw-w64-libmangle build dir" mkdir -p "${BUILD_DIR}/mingw-w64-libmangle-build"
+          cd "${BUILD_DIR}/mingw-w64-libmangle-build"
           run "mingw-w64-libmangle: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/libmangle/configure" \
             --prefix="${TARGET_DIR}" \
             --host="${TARGET}" \
@@ -562,7 +576,8 @@ jobs:
 
           # tools (包含 widl 等工具，安装到 ${PREFIX})
           for p in gendef genidl genpeimg widl; do
-            run "准备 mingw-w64-tools ${p} build dir" mkdir -p "${BUILD_DIR}/mingw-w64-tools-${p}-build" && cd "${BUILD_DIR}/mingw-w64-tools-${p}-build"
+            run "准备 mingw-w64-tools ${p} build dir" mkdir -p "${BUILD_DIR}/mingw-w64-tools-${p}-build"
+            cd "${BUILD_DIR}/mingw-w64-tools-${p}-build"
             run "mingw-w64-tools: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-tools/${p}/configure" \
               --prefix="${PREFIX}" \
               --host="${HOST}" \
@@ -578,7 +593,8 @@ jobs:
 
           # =========== 13. gcc 第二阶段 (完整版本) ===========
           run "恢复使用新构建的binutils" export PATH="${PREFIX}/bin:${PATH}"
-          run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build" && cd "${BUILD_DIR}/gcc2-build"
+          run "准备 gcc stage2 build dir" mkdir -p "${BUILD_DIR}/gcc2-build"
+          cd "${BUILD_DIR}/gcc2-build"
           # info "取消 cross 工具链环境变量"
           # unset CC CXX LD AR AS RANLIB
 
@@ -601,7 +617,7 @@ jobs:
             --with-isl="${PREFIX}" \
             --with-system-zlib \
             --with-sysroot="${TARGET_DIR}" \
-            --with-boot-ldflags=" -Wl,--disable-dynamicbase -static-libstdc++ -static-libgcc" \
+            --with-boot-ldflags="-Wl,--disable-dynamicbase -static-libstdc++ -static-libgcc" \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
@@ -623,7 +639,8 @@ jobs:
 
           # =========== 准备构建python的依赖 ===============
           # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
-          run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build" && cd "${BUILD_DIR}/expat-build"
+          run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
+          cd "${BUILD_DIR}/expat-build"
           run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -640,7 +657,7 @@ jobs:
           run "expat: make install" make install
 
           # pdcurses (opt)
-          run "准备 pdcurses build dir" cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
+          cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
           run "pdcurses: configure" make \
             CC="${CROSS_PREFIX}/bin/${TARGET}-gcc" \
             CXX="${CROSS_PREFIX}/bin/${TARGET}-g++" \
@@ -660,7 +677,8 @@ jobs:
 
           # gdbm (opt)
           run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoreconf -fiv
-          run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
+          run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
+          cd "${BUILD_DIR}/gdbm-build"
           run "gdbm: configure" lt_cv_sys_max_cmd_len=8192 \
           ac_cv_func_mmap_fixed_mapped=yes gl_cv_func_gettimeofday_clobber=no \
           "${SOURCE_CODE_DIR}/gdbm/configure" \
@@ -681,7 +699,8 @@ jobs:
           run "gdbm: make install" make install
 
           # libffi (opt)
-          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build" && cd "${BUILD_DIR}/libffi-build"
+          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
+          cd "${BUILD_DIR}/libffi-build"
           run "libffi: configure" "${SOURCE_CODE_DIR}/libffi/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -697,7 +716,8 @@ jobs:
           run "libffi: make install" make install
 
           # openssl (opt)
-          run "准备 openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build" && cd "${BUILD_DIR}/openssl-build"
+          run "准备 openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build"
+          cd "${BUILD_DIR}/openssl-build"
           run "openssl: configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -722,7 +742,8 @@ jobs:
             CPPFLAGS="${CPPFLAGS}"
 
           # sqlite (opt)
-          run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
+          run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
+          cd "${BUILD_DIR}/sqlite-build"
           unset CC CXX FC AR AS RANLIB STRIP WINDRES BUILD HOST TARGET
           run "准备 sqlite 先行版" bash -lc '"${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball'
           run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
@@ -758,7 +779,8 @@ jobs:
           run "sqlite: make install" make install
 
           # python (opt)
-          run "准备 python build dir" mkdir -p "${BUILD_DIR}/python-build" && cd "${BUILD_DIR}/python-build"
+          run "准备 python build dir" mkdir -p "${BUILD_DIR}/python-build"
+          cd "${BUILD_DIR}/python-build"
           run "python: configure" "${SOURCE_CODE_DIR}/python/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
@@ -782,7 +804,8 @@ jobs:
           run "python: make install" make install
 
           # =========== 14. 构建 gdb (不带 Python 支持) ===========
-          run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build" && cd "${BUILD_DIR}/gdb-build"
+          run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build"
+          cd "${BUILD_DIR}/gdb-build"
 
           export CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -fcommon -D_WIN32_WINNT=0x0601"
           export CXXFLAGS="${CXXFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
