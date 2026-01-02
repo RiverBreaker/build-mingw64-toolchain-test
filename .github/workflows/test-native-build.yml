@@ -659,7 +659,7 @@ jobs:
           done
 
           # gdbm (opt)
-          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoreconf -fi
+          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch"
           run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
           run "gdbm: configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
             --prefix="${OPT_DIR}" \
@@ -673,7 +673,7 @@ jobs:
             CXXFLAGS="${CXXFLAGS} -fcommon" \
             LDFLAGS="${LDFLAGS}" \
             CPPFLAGS="${CPPFLAGS}"
-          run "gdbm: make" make -j$(nproc)
+          run "gdbm: make" make -j$(nproc) AUTOMAKE=true ACLOCAL=true
           run "gdbm: make install" make install
 
           # libffi (opt)
