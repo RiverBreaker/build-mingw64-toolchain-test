@@ -163,7 +163,7 @@ run() {
 
   # 执行命令并捕获返回码（不会让 shell 退出）
   local rc=0
-  if ! eval "$@" >>"$logfile" 2>&1; then
+  if ! bash -c "$*" >>"$logfile" 2>&1; then
     rc=$?
   else
     rc=0
