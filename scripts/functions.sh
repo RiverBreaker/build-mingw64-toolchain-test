@@ -155,15 +155,81 @@ run() {
     echo "----------------------------------------"
   } >"$logfile"
 
-  # --- 临时禁用 errexit 与 ERR trap（保存并恢复） ---
+  # 保存并临时清除 ERR trap，关闭 errexit（用后恢复）
   local old_trap
-  old_trap="$(trap -p ERR || true)"   # 保存当前 ERR trap（如果有）
-  trap - ERR                           # 暂时清除 ERR trap
-  set +e                               # 关闭 errexit，确保后续命令失败可被捕获
+  old_trap="$(trap -p ERR || true)"
+  trap - ERR
+  set +e
 
-  # 执行命令并捕获返回码（不会让 shell 退出）
+  # --------------- 解析传入参数 ---------------
+  local -a assign_args=()
+  local -a rest=()
+  local arg
+  for arg in "$@"; do
+    # 只有在还没有遇到非 NAME=VALUE 的 token 时，才把前缀收集为 assign_args
+    if [[ ${#rest[@]} -eq 0 && $arg =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]; then
+      assign_args+=("$arg")
+    else
+      rest+=("$arg")
+    fi
+  done
+
+  if [[ ${#rest[@]} -eq 0 ]]; then
+    # 没有任何命令可执行
+    die "run: no command provided for $desc"
+  fi
+
+  # 在 rest[] 中寻找第一个看起来像命令的 token（命令可能带路径，或在 PATH 中可执行，或不以 - 开头）
+  local cmd_index=-1
+  local i token
+  for i in "${!rest[@]}"; do
+    token="${rest[$i]}"
+    # 优先判定：显式路径或不以 '-' 开头
+    if [[ "$token" != -* || "$token" == */* ]]; then
+      cmd_index=$i
+      break
+    fi
+    # 否则判定是否在 PATH 中可执行
+    if command -v "$token" >/dev/null 2>&1; then
+      cmd_index=$i
+      break
+    fi
+    # 若 token 看起来像 /path/to/cmd（已含 /），上面已覆盖
+  done
+
+  if (( cmd_index == -1 )); then
+    die "run: 找不到可执行命令。请确保命令（如 /path/configure 或 env）出现在参数中。"
+  fi
+
+  # 把命令之前的 tokens 视为 pre-options（会移动到命令后的参数列表）
+  local -a pre_opts=()
+  local -a cmd_and_tail=()
+  local j
+  for (( j=0; j<cmd_index; j++ )); do pre_opts+=("${rest[$j]}"); done
+  for (( j=cmd_index; j<${#rest[@]}; j++ )); do cmd_and_tail+=("${rest[$j]}"); done
+
+  # 构建最终命令数组： cmd_and_tail[0] 是命令；其参数 = pre_opts + cmd_and_tail[1:]
+  local -a cmd_args=()
+  cmd_args+=( "${cmd_and_tail[0]}" )
+  for j in "${pre_opts[@]}"; do cmd_args+=( "$j" ); done
+  if (( ${#cmd_and_tail[@]} > 1 )); then
+    for (( j=1; j<${#cmd_and_tail[@]}; j++ )); do cmd_args+=( "${cmd_and_tail[$j]}" ); done
+  fi
+
+  # 在日志中写出重建后的命令（带安全的 %q 引号展示）
+  {
+    printf 'RECONSTRUCTED:'
+    if (( ${#assign_args[@]} > 0 )); then
+      printf ' env'
+      for arg in "${assign_args[@]}"; do printf ' %q' "$arg"; done
+    fi
+    for arg in "${cmd_args[@]}"; do printf ' %q' "$arg"; done
+    echo
+  } >>"$logfile"
+
+  # --------------- 执行命令并捕获返回码 ---------------
   local rc=0
-  if ! bash -c "$*" >>"$logfile" 2>&1; then
+  if ! env "${assign_args[@]}" "${cmd_args[@]}" >>"$logfile" 2>&1; then
     rc=$?
   else
     rc=0
@@ -177,6 +243,7 @@ run() {
   fi
   set -e
 
+  # --------------- 处理返回码与日志 ---------------
   if [[ $rc -ne 0 ]]; then
     echo >&2
     warn "步骤失败：$desc"
@@ -209,6 +276,7 @@ run() {
 
   info "完成：$desc"
 }
+
 
 # -------------------- post_check / aggregate / group / enable_strict_mode (unchanged) --------------------
 post_check() {
