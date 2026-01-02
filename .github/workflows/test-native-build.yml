@@ -659,7 +659,7 @@ jobs:
           done
 
           # gdbm (opt)
-          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoconf -fiv
+          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoreconf -fiv
           run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
           run "gdbm: configure" lt_cv_sys_max_cmd_len=8192 \
           ac_cv_func_mmap_fixed_mapped=yes gl_cv_func_gettimeofday_clobber=no \
