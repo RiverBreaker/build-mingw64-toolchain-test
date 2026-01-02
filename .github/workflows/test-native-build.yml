@@ -727,6 +727,10 @@ jobs:
           run "准备 sqlite 先行版" bash -lc '"${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball'
           run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
 
+          export BUILD="x86_64-pc-linux-gnu"
+          export HOST="x86_64-w64-mingw32"
+          export TARGET="x86_64-w64-mingw32"
+
           export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
           export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
           export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
@@ -736,10 +740,6 @@ jobs:
           export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
           export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
           export FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran"
-
-          export BUILD="x86_64-pc-linux-gnu"
-          export HOST="x86_64-w64-mingw32"
-          export TARGET="x86_64-w64-mingw32"
 
           SQLITE_VER=$(echo "$SQLITE_VERSION" | awk '{gsub(/[^0-9]/, "", $0); printf("%07d", $0)}')
           run "解压 sqlite-autoconf 源码" archive_extract "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
