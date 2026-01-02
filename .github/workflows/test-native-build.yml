@@ -722,7 +722,7 @@ jobs:
           run "准备 sqlite 先行版" CC="gcc" CXX="g++" "${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball
           run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
           SQLITE_VER=$(echo "$SQLITE_VERSION" | awk '{gsub(/[^0-9]/, "", $0); printf("%07d", $0)}')
-          run "解压 sqlite-autoconf 源码" tar -xf "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
+          run "解压 sqlite-autoconf 源码" archive_extract "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
           run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
