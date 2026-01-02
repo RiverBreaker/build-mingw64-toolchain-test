@@ -659,9 +659,11 @@ jobs:
           done
 
           # gdbm (opt)
-          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch"
+          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoconf -fiv
           run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build" && cd "${BUILD_DIR}/gdbm-build"
-          run "gdbm: configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
+          run "gdbm: configure" lt_cv_sys_max_cmd_len=8192 \
+          ac_cv_func_mmap_fixed_mapped=yes gl_cv_func_gettimeofday_clobber=no \
+          "${SOURCE_CODE_DIR}/gdbm/configure" \
             --prefix="${OPT_DIR}" \
             --host="${HOST}" \
             --build="${BUILD}" \
@@ -669,6 +671,8 @@ jobs:
             --enable-shared \
             --disable-static \
             --enable-libgdbm-compat \
+            lt_cv_to_host_file_cmd=func_convert_file_nix_to_w32 \
+            lt_cv_to_tool_file_cmd=func_convert_file_nix_to_w32 \
             CFLAGS="${CFLAGS}  -fcommon" \
             CXXFLAGS="${CXXFLAGS} -fcommon" \
             LDFLAGS="${LDFLAGS}" \
@@ -720,9 +724,9 @@ jobs:
           # sqlite (opt)
           run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build" && cd "${BUILD_DIR}/sqlite-build"
           unset CC CXX FC AR AS RANLIB STRIP WINDRES BUILD HOST TARGET
-          run "准备 sqlite 先行版" CC="gcc" CXX="g++" "${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball
+          run "准备 sqlite 先行版" bash -lc '"${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball'
           run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
-          
+
           export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
           export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
           export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
