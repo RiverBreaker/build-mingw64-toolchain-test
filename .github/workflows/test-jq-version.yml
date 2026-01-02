@@ -201,7 +201,7 @@ jobs:
           mkdir -p ${SOURCE_CODE_DIR}/sqlite-releases
           LOG_DIR="${GITHUB_WORKSPACE}/logs"
           ls -lh "${SOURCE_CODE_DIR}"
-          find "${GITHUB_WORKSPACE}/sqlite-build" -name "sqlite-autoconf*.tar.gz" -type f -exec tar -xf {} -C "${SOURCE_CODE_DIR}/sqlite-releases" \;
+          tar -xvf "${GITHUB_WORKSPACE}/sqlite-build/sqlite-autoconf-3420000.tar.gz" -C "${SOURCE_CODE_DIR}/sqlite-releases"
           tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite-releases/sqlite-autoconf*"
 
 
