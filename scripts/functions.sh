@@ -166,7 +166,6 @@ run() {
   local -a rest=()
   local arg
   for arg in "$@"; do
-    # 只有在还没有遇到非 NAME=VALUE 的 token 时，才把前缀收集为 assign_args
     if [[ ${#rest[@]} -eq 0 && $arg =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]]; then
       assign_args+=("$arg")
     else
@@ -175,7 +174,6 @@ run() {
   done
 
   if [[ ${#rest[@]} -eq 0 ]]; then
-    # 没有任何命令可执行
     die "run: no command provided for $desc"
   fi
 
@@ -184,31 +182,28 @@ run() {
   local i token
   for i in "${!rest[@]}"; do
     token="${rest[$i]}"
-    # 优先判定：显式路径或不以 '-' 开头
     if [[ "$token" != -* || "$token" == */* ]]; then
       cmd_index=$i
       break
     fi
-    # 否则判定是否在 PATH 中可执行
     if command -v "$token" >/dev/null 2>&1; then
       cmd_index=$i
       break
     fi
-    # 若 token 看起来像 /path/to/cmd（已含 /），上面已覆盖
   done
 
   if (( cmd_index == -1 )); then
     die "run: 找不到可执行命令。请确保命令（如 /path/configure 或 env）出现在参数中。"
   fi
 
-  # 把命令之前的 tokens 视为 pre-options（会移动到命令后的参数列表）
+  # pre-options 和 command+tail
   local -a pre_opts=()
   local -a cmd_and_tail=()
   local j
   for (( j=0; j<cmd_index; j++ )); do pre_opts+=("${rest[$j]}"); done
   for (( j=cmd_index; j<${#rest[@]}; j++ )); do cmd_and_tail+=("${rest[$j]}"); done
 
-  # 构建最终命令数组： cmd_and_tail[0] 是命令；其参数 = pre_opts + cmd_and_tail[1:]
+  # 构建 cmd_args：命令 + (pre_opts) + tail_args
   local -a cmd_args=()
   cmd_args+=( "${cmd_and_tail[0]}" )
   for j in "${pre_opts[@]}"; do cmd_args+=( "$j" ); done
@@ -216,7 +211,7 @@ run() {
     for (( j=1; j<${#cmd_and_tail[@]}; j++ )); do cmd_args+=( "${cmd_and_tail[$j]}" ); done
   fi
 
-  # 在日志中写出重建后的命令（带安全的 %q 引号展示）
+  # 在日志写出重建后的命令（便于调试）
   {
     printf 'RECONSTRUCTED:'
     if (( ${#assign_args[@]} > 0 )); then
@@ -227,12 +222,52 @@ run() {
     echo
   } >>"$logfile"
 
-  # --------------- 执行命令并捕获返回码 ---------------
+  # --------------- 决定如何执行（函数 vs 外部可执行文件） ---------------
   local rc=0
-  if ! env "${assign_args[@]}" "${cmd_args[@]}" >>"$logfile" 2>&1; then
-    rc=$?
+  local cmd_name="${cmd_args[0]}"
+
+  # 如果命令是 shell function，则在当前 shell 中调用以便其能 export 回父 shell
+  if [[ "$(type -t "$cmd_name" 2>/dev/null)" == "function" ]]; then
+    # 保存旧的环境值并 export 新值（以便函数能看到这些临时 env）
+    declare -A __old_has
+    declare -A __old_val
+    local pair name val
+    for pair in "${assign_args[@]}"; do
+      name="${pair%%=*}"
+      val="${pair#*=}"
+      if [[ "${!name+x}" ]]; then
+        __old_has["$name"]=1
+        __old_val["$name"]="${!name}"
+      else
+        __old_has["$name"]=0
+      fi
+      export "$name"="$val"
+    done
+
+    # 在当前 shell 调用 function，并把 stdout/stderr 重定向到日志
+    if ! { "${cmd_args[@]}"; } >>"$logfile" 2>&1; then
+      rc=$?
+    else
+      rc=0
+    fi
+
+    # 恢复旧环境（存在则恢复，不存在则 unset）
+    for name in "${!__old_has[@]}"; do
+      if [[ "${__old_has[$name]}" -eq 1 ]]; then
+        export "$name"="${__old_val[$name]}"
+      else
+        unset "$name" 2>/dev/null || true
+      fi
+    done
+    unset __old_has __old_val
+
   else
-    rc=0
+    # 非函数：保持原来行为，用 env 在子进程中执行（不污染父环境）
+    if ! env "${assign_args[@]}" "${cmd_args[@]}" >>"$logfile" 2>&1; then
+      rc=$?
+    else
+      rc=0
+    fi
   fi
 
   # 恢复 ERR trap 与 errexit
@@ -276,6 +311,7 @@ run() {
 
   info "完成：$desc"
 }
+
 
 
 # -------------------- post_check / aggregate / group / enable_strict_mode (unchanged) --------------------
