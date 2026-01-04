@@ -597,7 +597,8 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: true
-          # install: >-
+          install: >-
+            lndir git subversion tar zip p7zip make patch automake autoconf autoconf-archive libtool flex bison gettext gettext-devel wget sshpass texinfo autogen dejagnu pkgconf
 
       - name: download source code
         shell: msys2 {0}
