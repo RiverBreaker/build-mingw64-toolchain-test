@@ -260,14 +260,6 @@ jobs:
           run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
           run "gcc stage1: install-gcc" make install-gcc
 
-          # set cross toolchain env
-          export CC="${PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${PREFIX}/bin/${TARGET}-g++"
-          export LD="${PREFIX}/bin/${TARGET}-ld"
-          export AR="${PREFIX}/bin/${TARGET}-ar"
-          export AS="${PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
-
           # mingw-crt
           run "prepare mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build"
           cd "${BUILD_DIR}/mingw-crt-build"
@@ -276,6 +268,13 @@ jobs:
           run "mingw-crt: install" make install
 
           # gcc full build
+          # set cross toolchain env
+          export CC="gcc"
+          export CXX="g++"
+          export LD="ld"
+          export AR="ar"
+          export AS="as"
+          export RANLIB="ranlib"
           run "准备 gcc full build dir" mkdir -p "${BUILD_DIR}/gcc-full-build"
           cd "${BUILD_DIR}/gcc-full-build"
           run "gcc full: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
@@ -295,6 +294,13 @@ jobs:
             --with-mpc=/usr \
             --with-isl=/usr
 
+          # set cross toolchain env
+          export CC="${PREFIX}/bin/${TARGET}-gcc"
+          export CXX="${PREFIX}/bin/${TARGET}-g++"
+          export LD="${PREFIX}/bin/${TARGET}-ld"
+          export AR="${PREFIX}/bin/${TARGET}-ar"
+          export AS="${PREFIX}/bin/${TARGET}-as"
+          export RANLIB="${PREFIX}/bin/${TARGET}-ranlib"
           run "gcc full: make" make -j$(nproc)
           run "gcc full: install" make install
 
