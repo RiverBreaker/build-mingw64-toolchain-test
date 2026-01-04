@@ -380,6 +380,7 @@ export_versions_from_json() {
   local outpath="${4:-${GITHUB_WORKSPACE:-.}/versions.selected.json}"
 
   command -v jq >/dev/null 2>&1 || { echo "jq is required but not found" >&2; return 2; }
+  # base64 only used conditionally for encoding multiline outputs to GITHUB_OUTPUT
   command -v base64 >/dev/null 2>&1 || { echo "base64 is required but not found" >&2; return 2; }
 
   [[ -f "$versions_file" ]] || {
@@ -401,26 +402,22 @@ export_versions_from_json() {
     }
   fi
 
-  # ---------- flatten json (NO core/extension prefix) ----------
+  # ---------- flatten json to lines of {"key": "...", "value": ...} ----------
+  # produce keys like: GCC, BINUTILS, SQLITE_VERSION, SQLITE_YEAR, OPENSSL, ...
   local tmp
   tmp="$(mktemp)"
 
   jq -c --arg v "$ver" '
     .gcc_versions[$v]
-    | to_entries[]
+    | to_entries[]        # each top-level section (core, Extension, ...)
     | .value
-    | to_entries[]
-    | if .value | type == "object" then
-        .value | to_entries[]
-        | {
-            key: (.key | ascii_upcase),
-            value: .value
-          }
+    | to_entries[] as $comp
+    | if ($comp.value | type) == "object" then
+        $comp.value
+        | to_entries[]
+        | { key: (($comp.key|ascii_upcase) + "_" + (.key|ascii_upcase)), value: .value }
       else
-        {
-          key: (.key | ascii_upcase),
-          value: .value
-        }
+        { key: ($comp.key|ascii_upcase), value: $comp.value }
       end
   ' "$versions_file" >"$tmp" || {
     echo "Failed to flatten version json" >&2
@@ -428,30 +425,52 @@ export_versions_from_json() {
     return 5
   }
 
-  # ---------- file mode ----------
+  # ---------- file mode: write raw selected json ----------
   if [[ "$mode" == "file" ]]; then
     mkdir -p "$(dirname "$outpath")" 2>/dev/null || true
     jq --arg v "$ver" '.gcc_versions[$v]' "$versions_file" >"$outpath"
     [[ -n "${GITHUB_OUTPUT:-}" ]] && {
-      echo "versions_file=$outpath" >>"$GITHUB_OUTPUT"
-      echo "gcc-version=$ver" >>"$GITHUB_OUTPUT"
+      echo "versions_file=${outpath}" >>"$GITHUB_OUTPUT"
+      echo "gcc-version=${ver}" >>"$GITHUB_OUTPUT"
     }
     rm -f "$tmp"
     return 0
   fi
 
-  # ---------- export variables ----------
-  while IFS= read -r entry_b64; do
-    local entry_json key val env_key
-    entry_json="$(echo "$entry_b64" | base64 --decode)"
-    key="$(echo "$entry_json" | jq -r '.key')"
-    val="$(echo "$entry_json" | jq -r '.value')"
+  # helper: base64 encode no-wrap (portable)
+  _b64_encode() {
+    if base64 --help 2>&1 | grep -q -- '--wrap' >/dev/null 2>&1; then
+      printf '%s' "$1" | base64 --wrap=0
+    else
+      printf '%s' "$1" | base64
+    fi
+  }
 
-    env_key="$(echo "$key" | sed 's/[^A-Za-z0-9_]/_/g')"
+  # ---------- export variables ----------
+  # read tmp line-by-line (each line is a compact json {"key": "...", "value": ...})
+  while IFS= read -r entry_json || [[ -n "$entry_json" ]]; do
+    # skip empty lines
+    [[ -z "${entry_json//[[:space:]]/}" ]] && continue
+
+    local key val env_key
+    # key must exist; val may be null/number/string
+    key="$(jq -r '.key' <<<"$entry_json" 2>/dev/null || true)"
+    # convert value to string to preserve numbers; if null, yield empty string
+    val="$(jq -r 'if .value==null then "" else ( .value|tostring ) end' <<<"$entry_json" 2>/dev/null || true)"
+
+    # safety: if key missing, skip (prevents `export =` errors)
+    if [[ -z "$key" || "$key" == "null" ]]; then
+      echo "Warning: skipping entry with empty key: $entry_json" >&2
+      continue
+    fi
+
+    # normalize to safe env var (should already be uppercase from jq, but sanitize anyway)
+    env_key="$(printf '%s' "$key" | sed 's/[^A-Za-z0-9_]/_/g')"
 
     case "$mode" in
       env)
         if [[ -n "${GITHUB_ENV:-}" ]]; then
+          # GitHub will accept multiline via file append, but we keep same simple behavior:
           printf '%s=%s\n' "$env_key" "$val" >>"$GITHUB_ENV"
         else
           export "$env_key=$val"
@@ -459,9 +478,18 @@ export_versions_from_json() {
         ;;
       outputs)
         if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-          printf '%s=%s\n' "$env_key" "$val" >>"$GITHUB_OUTPUT"
+          # GitHub step outputs do not support literal newlines well; if value contains newline, base64 it
+          if printf '%s' "$val" | grep -q $'\n'; then
+            local b64
+            b64="$(_b64_encode "$val")"
+            printf '%s=%s\n' "$env_key" "$b64" >>"$GITHUB_OUTPUT"
+            printf '%s__b64=1\n' "$env_key" >>"$GITHUB_OUTPUT"
+          else
+            printf '%s=%s\n' "$env_key" "$val" >>"$GITHUB_OUTPUT"
+          fi
         else
-          echo "$env_key=$val"
+          # fallback: print to stdout
+          printf '%s=%s\n' "$env_key" "$val"
         fi
         ;;
       local|step-only)
@@ -469,24 +497,26 @@ export_versions_from_json() {
         echo "$env_key=$val"
         ;;
       *)
-        echo "Unknown mode: $mode" >&2
+        echo "Unknown mode: $mode (supported: env, outputs, step-only, local)" >&2
         rm -f "$tmp"
         return 6
         ;;
     esac
-  done < <(jq -c '@base64' "$tmp")
+  done <"$tmp"
 
-  # ---------- gcc version ----------
+  # ---------- also export GCC_VERSION ----------
   if [[ "$mode" == "env" && -n "${GITHUB_ENV:-}" ]]; then
-    echo "GCC_VERSION=$ver" >>"$GITHUB_ENV"
+    echo "GCC_VERSION=${ver}" >>"$GITHUB_ENV"
   elif [[ "$mode" == "outputs" && -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "gcc-version=$ver" >>"$GITHUB_OUTPUT"
+    echo "gcc-version=${ver}" >>"$GITHUB_OUTPUT"
   else
     export GCC_VERSION="$ver"
   fi
 
   rm -f "$tmp"
+  return 0
 }
+
 
 
 curl_download() {
