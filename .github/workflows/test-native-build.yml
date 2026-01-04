@@ -489,39 +489,6 @@ jobs:
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
 
-          # # =========== 4. gcc 第一阶段 (bootstrap) ===========
-          # run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build"
-          # cd "${BUILD_DIR}/gcc1-build"
-          # run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-          #   --prefix="${PREFIX}" \
-          #   --host="${HOST}" \
-          #   --build="${BUILD}" \
-          #   --target="${TARGET}" \
-          #   --disable-multilib \
-          #   --enable-languages=c,c++ \
-          #   --without-headers \
-          #   --disable-shared \
-          #   --disable-threads \
-          #   --disable-libatomic \
-          #   --disable-libgomp \
-          #   --disable-libquadmath \
-          #   --disable-libssp \
-          #   --disable-libvtv \
-          #   --disable-libstdcxx \
-          #   --disable-nls \
-          #   --with-gmp="${PREFIX}" \
-          #   --with-mpfr="${PREFIX}" \
-          #   --with-mpc="${PREFIX}" \
-          #   --with-isl="${PREFIX}" \
-          #   --with-sysroot="${TARGET_DIR}" \
-          #   CFLAGS="${CFLAGS}" \
-          #   CXXFLAGS="${CXXFLAGS}" \
-          #   LDFLAGS="${LDFLAGS}" \
-          #   CPPFLAGS="${CPPFLAGS}"
-
-          # run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
-          # run "gcc stage1: make install-gcc" make install-gcc
-
           # =========== 5. mingw-w64 CRT (安装到 ${TARGET_DIR}) ===========
           run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build"
           cd "${BUILD_DIR}/mingw-crt-build"
@@ -662,29 +629,325 @@ jobs:
         if: always() || cancelled() || failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: build-linux-logs
           path: "${{ github.workspace }}/logs"
 
       - name: upload native toolchain
         uses: actions/upload-artifact@v4
         with:
-          name: mingw-w64-native-toolchain
+          name: mingw-w64-native-toolchain-linux
           path: "${{ github.workspace }}/mingw-w64-native"
 
-  # build-Extension-components:
-  #   needs: build-cross
-  #   runs-on: windows-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
+  build-Extension-components:
+    needs: build-cross
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
 
-  #     - name: Download mingw-w64-native-toolchain
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: mingw-w64-native-toolchain
-  #         path: "${{ github.workspace }}/mingw-w64-native"
+      - name: Download mingw-w64-native-toolchain
+        uses: actions/download-artifact@v4
+        with:
+          name: mingw-w64-native-toolchain-linux
+          path: "${{ github.workspace }}/mingw-w64-native"
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
 
-  #     - name: download source code
-  #       shell: pwsh
-  #       run: |
 
+      - name: download source code
+        shell: msys2 {0}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: >-
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          mkdir -p "${SOURCE_CODE_DIR}" "${LOG_DIR}"
+          GNU_BASE_URL="https://ftp.gnu.org/gnu"
+          GITHUB_BASE_URL="https://github.com"
+          SQLITE_BASE_URL="https://sqlite.org"
+
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+          export_versions_from_json "${GITHUB_WORKSPACE}/dependencies.json" ${GCC_VERSION} local
+
+          gnu_pkgs=( make gdbm gdb ncurses readline )
+          github_pkgs=( ninja cmake pkgconf expat python openssl libffi )
+          alone_pkgs=( sqlite )
+
+          for p in "${gnu_pkgs[@]}"; do
+            p-val=${p^^}
+            URL="${GNU_BASE_URL}/${p}/${p}-${!p-val}.tar.gz"
+            run "下载 ${p} 源码" curl_download ${URL} "${SOURCE_CODE_DIR}"
+            run "解压 ${p} 源码" archive_extract ${p} ${p}-${!p-val}.tar.gz ${SOURCE_CODE_DIR}
+          done
+          for p in "${github_pkgs[@]}";do
+            case "${p}" in
+              python)
+                ver="${PYTHON}"
+                github_author="msys2-contrib"
+                project_name="cpython-mingw"
+                ;;
+              openssl|libffi|pkgconf)
+                pkg_name=${p^^}
+                ver="${!pkg_name}"
+                github_author="${p}"
+                project_name="${p}"
+                ;;
+              ninja)
+                ver="${NINJA}"
+                github_author="ninja-build"
+                project_name="ninja"
+                ;;
+              cmake)
+                ver="${CMAKE}"
+                github_author="Kitware"
+                project_name="CMake"
+                ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
+              *)
+                error "未知的 GitHub 包: ${p}"
+                exit 1
+                ;;
+            esac
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            else
+              tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
+            fi
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
+              TAG="v${ver}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
+            elif [[ "${p}" == "expat" ]]; then
+              EXPAT_TAG="R_${ver//./_}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
+            else
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            fi
+            run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
+            run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
+          done
+          run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          ls -l "${SOURCE_CODE_DIR}"
+
+      - name: build Extension components
+        shell: msys2 {0}
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
+        run: >-
+          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
+          export BUILD_DIR="${GITHUB_WORKSPACE}/build"
+          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
+          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
+          mkdir -p "${BUILD_DIR}" "${LOG_DIR}"
+
+          export PATH="${PREFIX}/bin:${PATH}"
+
+          export BUILD="x86_64-w64-mingw32"
+          export HOST="x86_64-w64-mingw32"
+          export TARGET="x86_64-w64-mingw32"
+
+          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+
+          export TARGET_DIR="${PREFIX}/${TARGET}"
+          export OPT_DIR="${PREFIX}/opt"
+
+          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include -I${TARGET_DIR}/include"
+          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include -I${TARGET_DIR}/include"
+          export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
+
+          # build libffi ${OPT_DIR}
+          run "准备libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
+          cd "${BUILD_DIR}/libffi-build"
+          run "libffi configure" "${SOURCE_CODE_DIR}/libffi/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "libffi make" make -j$(nproc)
+          run "libffi install" make install
+
+          # build expat ${OPT_DIR}
+          run "准备expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
+          cd "${BUILD_DIR}/expat-build"
+          run "expat configure" "${SOURCE_CODE_DIR}/expat/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "expat make" make -j$(nproc)
+          run "expat install" make install
+
+          # build ncurses ${OPT_DIR}
+          run "准备ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
+          cd "${BUILD_DIR}/ncurses-build"
+          run "ncurses configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ACCESS" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} " \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "ncurses make" make -j$(nproc)
+          run "ncurses install" make install
+
+          # build readline ${OPT_DIR}
+          run "准备readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
+          cd "${BUILD_DIR}/readline-build"
+          run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "readline make" make -j$(nproc)
+          run "readline install" make install
+
+          # build gdbm ${OPT_DIR}
+          run "准备gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
+          cd "${BUILD_DIR}/gdbm-build"
+          run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            --enable-libgdbm-compat \
+            CFLAGS="${BASE_CFLAGS} -fcommon" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "gdbm make" make -j$(nproc)
+          run "gdbm install" make install
+
+          # build openssl ${OPT_DIR}
+          run "准备openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build"
+          cd "${BUILD_DIR}/openssl-build"
+          run "openssl configure" "${SOURCE_CODE_DIR}/openssl/configure" \
+            --prefix="${OPT_DIR}" \
+            --libdir="${OPT_DIR}/lib" \
+            --openssldir="${OPT_DIR}/ssl" \
+            shared \
+            threads \
+            zlib \
+            enable-camellia enable-capieng \
+            enable-idea enable-mdc2 enable-rc5 \
+            enable-rfc3779 -D__MINGW_USE_VC2005_COMPAT \
+            -DOPENSSLBIN=\"\\\"${OPT_DIR}/bin\\\"\" mingw64
+          run "openssl make" make -j$(nproc)
+          run "openssl install" make install
+
+          # build sqlite ${OPT_DIR}
+          run "准备sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
+          cd "${BUILD_DIR}/sqlite-build"
+          run "sqlite configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-threadsafe \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "sqlite make" make -j$(nproc)
+          run "sqlite install" make install
+
+          # build python ${OPT_DIR}
+          run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
+          cd "${BUILD_DIR}/python-build"
+          run "python configure" "${SOURCE_CODE_DIR}/python/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --enable-optimizations \
+            --enable-loadable-sqlite-extensions \
+            --without-ensurepip --without-c-locale-coercion \
+            --with-system-expat \
+            --with-system-ffi \
+            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            LDFLAGS="${BASE_LDFLAGS}" \
+            OPENSSL_LIBS="-lcrypto -lssl"
+
+          run "python make" make -j$(nproc)
+          run "python install" make install
+
+          # build gdb ${PREFIX}
+          run "准备gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build"
+          cd "${BUILD_DIR}/gdb-build"
+          run "gdb configure" "${SOURCE_CODE_DIR}/gdb/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${PREFIX}" \
+            --enable-shared \
+            --with-python="${OPT_DIR}/bin/python3.exe" \
+            --with-expat \
+            --with-libiconv="${PREFIX}" \
+            --with-zlib --enable-tui --disable-gdbtk \
+            --enable-64-bit-bfd --disable-nls \
+            --disable-werror --disable-win32-registry \
+            --disable-rpath --with-system-gdbinit="${PREFIX}/etc/gdbinit" \
+            CFLAGS="${BASE_CFLAGS} -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -fcommon -DNCURSES_STATIC -D_WIN32_WINNT=0x0601" \
+            CXXFLAGS="${BASE_CXXFLAGS} -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601" \
+            CPPFLAGS="${BASE_CPPFLAGS} -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "gdb make" make -j$(nproc)
+          run "gdb install" make install-strip
+
+          # build make ${PREFIX}
+
+          # build cmake ${PREFIX}
+
+          # build pkgconf ${PREFIX}
+
+          # build ninja ${PREFIX}
+
+
+      - name: upload logs
+        if: always() || cancelled() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-msys2-logs
+          path: "${{ github.workspace }}/logs"
+
+      - name: upload native toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: mingw-w64-native-toolchain-msys2
+          path: "${{ github.workspace }}/mingw-w64-native"
