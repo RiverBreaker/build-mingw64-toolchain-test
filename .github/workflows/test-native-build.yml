@@ -491,38 +491,38 @@ jobs:
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
 
-          # =========== 4. gcc 第一阶段 (bootstrap) ===========
-          run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build"
-          cd "${BUILD_DIR}/gcc1-build"
-          run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
-            --prefix="${PREFIX}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --disable-multilib \
-            --enable-languages=c,c++ \
-            --without-headers \
-            --disable-shared \
-            --disable-threads \
-            --disable-libatomic \
-            --disable-libgomp \
-            --disable-libquadmath \
-            --disable-libssp \
-            --disable-libvtv \
-            --disable-libstdcxx \
-            --disable-nls \
-            --with-gmp="${PREFIX}" \
-            --with-mpfr="${PREFIX}" \
-            --with-mpc="${PREFIX}" \
-            --with-isl="${PREFIX}" \
-            --with-sysroot="${TARGET_DIR}" \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
+          # # =========== 4. gcc 第一阶段 (bootstrap) ===========
+          # run "准备 gcc stage1 build dir" mkdir -p "${BUILD_DIR}/gcc1-build"
+          # cd "${BUILD_DIR}/gcc1-build"
+          # run "gcc stage1: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
+          #   --prefix="${PREFIX}" \
+          #   --host="${HOST}" \
+          #   --build="${BUILD}" \
+          #   --target="${TARGET}" \
+          #   --disable-multilib \
+          #   --enable-languages=c,c++ \
+          #   --without-headers \
+          #   --disable-shared \
+          #   --disable-threads \
+          #   --disable-libatomic \
+          #   --disable-libgomp \
+          #   --disable-libquadmath \
+          #   --disable-libssp \
+          #   --disable-libvtv \
+          #   --disable-libstdcxx \
+          #   --disable-nls \
+          #   --with-gmp="${PREFIX}" \
+          #   --with-mpfr="${PREFIX}" \
+          #   --with-mpc="${PREFIX}" \
+          #   --with-isl="${PREFIX}" \
+          #   --with-sysroot="${TARGET_DIR}" \
+          #   CFLAGS="${CFLAGS}" \
+          #   CXXFLAGS="${CXXFLAGS}" \
+          #   LDFLAGS="${LDFLAGS}" \
+          #   CPPFLAGS="${CPPFLAGS}"
 
-          run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
-          run "gcc stage1: make install-gcc" make install-gcc
+          # run "gcc stage1: make all-gcc" make -j$(nproc) all-gcc
+          # run "gcc stage1: make install-gcc" make install-gcc
 
           # =========== 5. mingw-w64 CRT (安装到 ${TARGET_DIR}) ===========
           run "准备 mingw-crt build dir" mkdir -p "${BUILD_DIR}/mingw-crt-build"
@@ -597,7 +597,6 @@ jobs:
           cd "${BUILD_DIR}/gcc2-build"
           # info "取消 cross 工具链环境变量"
           # unset CC CXX LD AR AS RANLIB
-
           run "gcc stage2: configure" "${SOURCE_CODE_DIR}/gcc/configure" \
             --prefix="${PREFIX}" \
             --host="${HOST}" \
@@ -637,208 +636,6 @@ jobs:
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install
 
-          # =========== 准备构建python的依赖 ===============
-          # =========== 7. 可选：expat (gdb需要，安装到 ${OPT_DIR}/expat) ===========
-          run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
-          cd "${BUILD_DIR}/expat-build"
-          run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --enable-static \
-            --disable-shared \
-            --without-docbook \
-            --without-xmlwf \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "expat: make" make -j$(nproc)
-          run "expat: make install" make install
-
-          # pdcurses (opt)
-          cd "${SOURCE_CODE_DIR}/pdcurses/wincon"
-          run "pdcurses: configure" make \
-            CC="${CROSS_PREFIX}/bin/${TARGET}-gcc" \
-            CXX="${CROSS_PREFIX}/bin/${TARGET}-g++" \
-            AR="${CROSS_PREFIX}/bin/${TARGET}-ar" \
-            AS="${CROSS_PREFIX}/bin/${TARGET}-as" \
-            RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib" \
-            STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip" \
-            WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres" \
-            FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran" \
-            WIDE=Y UTF8=Y
-          cp pdcurses.a "${OPT_DIR}/lib/libcursesw.a"
-          cp pdcurses.a "${OPT_DIR}/lib/libcurses.a"
-          cd "${SOURCE_CODE_DIR}/pdcurses"
-          for h in curses.h panel.h;do
-            cp "${h}" "${OPT_DIR}/include"
-          done
-
-          # gdbm (opt)
-          run "准备给gdbm打补丁" cd "${SOURCE_CODE_DIR}/gdbm" && patch -p1 < "${GITHUB_WORKSPACE}/patch/gdbm_1.18.1-win32-support.patch" && autoreconf -fiv
-          run "准备 gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
-          cd "${BUILD_DIR}/gdbm-build"
-          run "gdbm: configure" lt_cv_sys_max_cmd_len=8192 \
-          ac_cv_func_mmap_fixed_mapped=yes gl_cv_func_gettimeofday_clobber=no \
-          "${SOURCE_CODE_DIR}/gdbm/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-shared \
-            --disable-static \
-            --enable-libgdbm-compat \
-            lt_cv_to_host_file_cmd=func_convert_file_nix_to_w32 \
-            lt_cv_to_tool_file_cmd=func_convert_file_nix_to_w32 \
-            CFLAGS="${CFLAGS}  -fcommon" \
-            CXXFLAGS="${CXXFLAGS} -fcommon" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "gdbm: make" make -j$(nproc) AUTOMAKE=true ACLOCAL=true
-          run "gdbm: make install" make install
-
-          # libffi (opt)
-          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
-          cd "${BUILD_DIR}/libffi-build"
-          run "libffi: configure" "${SOURCE_CODE_DIR}/libffi/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-static \
-            --enable-shared \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "libffi: make" make -j$(nproc)
-          run "libffi: make install" make install
-
-          # openssl (opt)
-          run "准备 openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build"
-          cd "${BUILD_DIR}/openssl-build"
-          run "openssl: configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --libdir="${OPT_DIR}/lib" \
-            --openssldir="${OPT_DIR}/ssl" \
-            threads shared zlib \
-            enable-camellia \
-            enable-capieng \
-            enable-idea \
-            enable-mdc2 \
-            enable-rc5 \
-            enable-rfc3779 \
-            enable-ec_nistp_64_gcc_128 \
-            -D__MINGW_USE_VC2005_COMPAT \
-            -DOPENSSLBIN="${OPT_DIR}/bin" \
-            mingw64 \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-
-          # sqlite (opt)
-          run "准备 sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
-          cd "${BUILD_DIR}/sqlite-build"
-          unset CC CXX FC AR AS RANLIB STRIP WINDRES BUILD HOST TARGET
-          run "准备 sqlite 先行版" bash -lc '"${SOURCE_CODE_DIR}/sqlite/configure" --enable-amalgamation && make && make amalgamation-tarball'
-          run "重命名 sqlite 源码目录" mv "${SOURCE_CODE_DIR}/sqlite" "${SOURCE_CODE_DIR}/sqlite-src"
-
-          export BUILD="x86_64-pc-linux-gnu"
-          export HOST="x86_64-w64-mingw32"
-          export TARGET="x86_64-w64-mingw32"
-
-          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
-          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
-          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
-          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
-          export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
-          export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
-          export FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran"
-
-          SQLITE_VER=$(echo "$SQLITE_VERSION" | awk '{gsub(/[^0-9]/, "", $0); printf("%07d", $0)}')
-          run "解压 sqlite-autoconf 源码" archive_extract "sqlite" "${BUILD_DIR}/sqlite-build/sqlite-autoconf-${SQLITE_VER}.tar.gz" -C "${SOURCE_CODE_DIR}"
-          run "sqlite: configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --enable-threadsafe \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${CFLAGS} -D_WIN32_WINNT=0x0600" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE"
-          run "sqlite: make" make -j$(nproc)
-          run "sqlite: make install" make install
-
-          # python (opt)
-          run "准备 python build dir" mkdir -p "${BUILD_DIR}/python-build"
-          cd "${BUILD_DIR}/python-build"
-          run "python: configure" "${SOURCE_CODE_DIR}/python/configure" \
-            --prefix="${OPT_DIR}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --target="${TARGET}" \
-            --enable-shared \
-            --with-build-python=$(which python3) \
-            --with-system-expat \
-            --with-system-ffi \
-            --disable-tkinter \
-            --enable-loadable-sqlite-extensions \
-            --without-ensurepip \
-            --without-c-locale-coercion \
-            --enable-optimizations \
-            CFLAGS="${CFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            CXXFLAGS="${CXXFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS} -Wno-error=implicit-function-declaration -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            OPENSSL_LIBS="-lcrypto -lssl"
-          run "python: make" make -j$(nproc)
-          run "python: make install" make install
-
-          # =========== 14. 构建 gdb (不带 Python 支持) ===========
-          run "准备 gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build"
-          cd "${BUILD_DIR}/gdb-build"
-
-          export CFLAGS="${CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -fcommon -D_WIN32_WINNT=0x0601"
-          export CXXFLAGS="${CXXFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
-          export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601"
-
-          export LDFLAGS="${LDFLAGS} -lz -lcurses"
-          export CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -D_WIN32_WINNT=0x0601"
-          run "gdb: configure" "${SOURCE_CODE_DIR}/gdb/configure" \
-            --prefix="${PREFIX}" \
-            --host="${HOST}" \
-            --build="${BUILD}" \
-            --enable-targets="${TARGET}" \
-            --with-python="${OPT_DIR}/bin/python3.exe" \
-            --enable-64-bit-bfd \
-            --with-expat \
-            --with-libiconv \
-            --with-curses \
-            --with-system-zlib \
-            --enable-tui \
-            --disable-werror \
-            --disable-win32-registry \
-            --disable-rpath \
-            --disable-gdbtk \
-            --disable-shared \
-            --enable-static \
-            --disable-nls \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
-            CPPFLAGS="${CPPFLAGS}"
-          run "gdb: make" make -j$(nproc)
-          run "gdb: make install" make install
-
           run "删除多余链接目录" rm -rf "${TARGET_DIR}/mingw"
 
           cd "${PREFIX}" || exit 1
@@ -875,3 +672,21 @@ jobs:
         with:
           name: mingw-w64-native-toolchain
           path: "${{ github.workspace }}/mingw-w64-native"
+
+  # build-Extension-components:
+  #   needs: build-cross
+  #   runs-on: windows-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+
+  #     - name: Download mingw-w64-native-toolchain
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: mingw-w64-native-toolchain
+  #         path: "${{ github.workspace }}/mingw-w64-native"
+
+  #     - name: download source code
+  #       shell: pwsh
+  #       run: |
+
