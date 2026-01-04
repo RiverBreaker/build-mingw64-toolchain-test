@@ -598,7 +598,19 @@ jobs:
         with:
           update: true
           install: >-
-           base-devel lndir git subversion tar zip p7zip make patch automake autoconf autoconf-archive libtool flex bison gettext gettext-devel wget sshpass texinfo autogen dejagnu pkgconf
+           base-devel
+           lndir git
+           subversion
+           tar zip p7zip
+           make patch
+           automake autoconf
+           autoconf-archive
+           libtool flex bison
+           gettext gettext-devel
+           wget sshpass
+           texinfo autogen
+           dejagnu pkgconf
+           jq coreutils
 
       - name: download source code
         shell: msys2 {0}
