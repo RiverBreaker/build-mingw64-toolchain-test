@@ -597,8 +597,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: true
-          install: >-
-
+          # install: >-
 
       - name: download source code
         shell: msys2 {0}
