@@ -67,8 +67,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv make gdbm gdb )
-          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi pdcurses )
+          gnu_pkgs=( gcc binutils libiconv )
+          github_pkgs=( mingw-w64 zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -94,74 +94,20 @@ jobs:
                 github_author="mingw-w64"
                 project_name="mingw-w64"
                 ;;
-              python)
-                ver="${PYTHON}"
-                github_author="msys2-contrib"
-                project_name="cpython-mingw"
-                ;;
-              openssl|sqlite|libffi|pkgconf)
-                pkg_name=${p^^}
-                ver="${!pkg_name}"
-                github_author="${p}"
-                project_name="${p}"
-                ;;
-              ninja)
-                ver="${NINJA}"
-                github_author="ninja-build"
-                project_name="ninja"
-                ;;
-              cmake)
-                ver="${CMAKE}"
-                github_author="Kitware"
-                project_name="CMake"
-                ;;
-              expat)
-                ver="${EXPAT}"
-                github_author="libexpat"
-                project_name="libexpat"
-                ;;
               zlib)
                 ver="${ZLIB}"
                 github_author="madler"
                 project_name="zlib"
-                ;;
-              pdcurses)
-                ver="${PDCURSES}"
-                github_author="wmcbrine"
-                project_name="PDCurses"
                 ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "sqlite" ]]; then
-              echo "SQLITE_VERSION=${ver}" >> "${GITHUB_ENV}"
-            fi
-            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
-              tail="${p}-${ver}.tar.gz"
-            elif [[ "${p}" == "sqlite" ]]; then
-              tail="version-${ver}.tar.gz"
-            elif [[ "${p}" == "pdcurses" ]]; then
-              tail="${ver}.tar.gz" # pdcurses
-            else
-              tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
-            fi
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
-              TAG="v${ver}"
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
-            elif [[ "${p}" == "expat" ]]; then
-              EXPAT_TAG="R_${ver//./_}"
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
-            else
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
-            fi
+            tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
+            URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
-            # if [[ -f "${SOURCE_CODE_DIR}/${tail}" ]]; then
-            #   du -sh "${SOURCE_CODE_DIR}/${tail}"
-            # fi
-            # du -sh "${SOURCE_CODE_DIR}/${p}"
           done
           info "下载与解压步骤完成"
 
@@ -599,9 +545,7 @@ jobs:
           export FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran"
 
           run "gcc stage2: make" make -j$(nproc)
-          run "gcc stage2: make install" make install
-
-          run "删除多余链接目录" rm -rf "${TARGET_DIR}/mingw"
+          run "gcc stage2: make install" make install-strip
 
           cd "${PREFIX}" || exit 1
 
@@ -937,6 +881,24 @@ jobs:
           # build pkgconf ${PREFIX}
 
           # build ninja ${PREFIX}
+
+          run "删除多余链接目录" rm -rf "${TARGET_DIR}/mingw"
+
+          cd "${PREFIX}" || exit 1
+
+          echo "== Strip exe / dll =="
+          find . -type f \( -name '*.exe' -o -name '*.dll' \) -print0 |
+            xargs -0 -n1 "${CROSS_PREFIX}/bin/${TARGET}-strip" --strip-unneeded || true
+
+          echo "== Strip static libraries =="
+          find . -type f -name '*.a' -print0 |
+            xargs -0 -n1 "${CROSS_PREFIX}/bin/${TARGET}-strip" --strip-debug || true
+
+          echo "== Remove libtool artifacts =="
+          find . -type f -name '*.la' -delete
+
+          echo "== Remove stray debug files (if any) =="
+          find . -type f -name '*.debug' -delete
 
 
       - name: upload logs
