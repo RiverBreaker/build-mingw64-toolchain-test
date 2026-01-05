@@ -876,6 +876,7 @@ jobs:
             CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
             LDFLAGS="${BASE_LDFLAGS}" \
             OPENSSL_LIBS="-lcrypto -lssl"
+          grep -E "pthread|thread" pyconfig.h
 
           run "python make" make -j$(nproc)
           run "python install" make install
