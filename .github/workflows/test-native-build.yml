@@ -856,86 +856,32 @@ jobs:
           run "sqlite make" make -j$(nproc)
           run "sqlite install" make install
 
-      - name: build python ${OPT_DIR}
-        shell: pwsh
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-        run: |
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          export BUILD_DIR="${GITHUB_WORKSPACE}/build"
-          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
-          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
-          mkdir -p "${BUILD_DIR}" "${LOG_DIR}"
-
-          export PATH="${PREFIX}/bin:${PATH}"
-
-          export BUILD="x86_64-w64-mingw32"
-          export HOST="x86_64-w64-mingw32"
-          export TARGET="x86_64-w64-mingw32"
-
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-
-          export TARGET_DIR="${PREFIX}/${TARGET}"
-          export OPT_DIR="${PREFIX}/opt"
-
-          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CPPFLAGS="-I${OPT_DIR}/include"
-          export BASE_LDFLAGS="-L${OPT_DIR}/lib"
 
           # build python ${OPT_DIR}
+          unset TARGET
           run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
           cd "${BUILD_DIR}/python-build"
-          run "python configure" "${SOURCE_CODE_DIR}/python/configure" `
-            --build="${BUILD}" `
-            --host="${HOST}" `
-            --target="${TARGET}" `
-            --prefix="${OPT_DIR}" `
-            --enable-shared `
-            --enable-optimizations `
-            --enable-loadable-sqlite-extensions `
-            --without-ensurepip --without-c-locale-coercion `
-            --with-system-expat `
-            --with-system-ffi `
-            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" `
-            CXXFLAGS="${BASE_CXXFLAGS}" `
-            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" `
-            LDFLAGS="${BASE_LDFLAGS}" `
+          run "python configure" "${SOURCE_CODE_DIR}/python/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --enable-optimizations \
+            --enable-loadable-sqlite-extensions \
+            --without-ensurepip --without-c-locale-coercion \
+            --with-system-expat \
+            --with-system-ffi \
+            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+            LDFLAGS="${BASE_LDFLAGS}" \
             OPENSSL_LIBS="-lcrypto -lssl"
 
           run "python make" make -j$(nproc)
           run "python install" make install
 
-      - name: build gdb ${OPT_DIR}
-        shell: msys2 {0}
-        env:
-          GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-        run: |
-          GITHUB_WORKSPACE=$(cygpath -u "${{ github.workspace }}")
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          export BUILD_DIR="${GITHUB_WORKSPACE}/build"
-          export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
-          export LOG_DIR="${GITHUB_WORKSPACE}/logs"
-          mkdir -p "${BUILD_DIR}" "${LOG_DIR}"
-
-          export PATH="${PREFIX}/bin:${PATH}"
-
-          export BUILD="x86_64-w64-mingw32"
-          export HOST="x86_64-w64-mingw32"
-          export TARGET="x86_64-w64-mingw32"
-
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-
-          export TARGET_DIR="${PREFIX}/${TARGET}"
-          export OPT_DIR="${PREFIX}/opt"
-
-          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CPPFLAGS="-I${OPT_DIR}/include"
-          export BASE_LDFLAGS="-L${OPT_DIR}/lib"
-
           # build gdb ${PREFIX}
+          export TARGET="x86_64-w64-mingw32"
           run "准备gdb build dir" mkdir -p "${BUILD_DIR}/gdb-build"
           cd "${BUILD_DIR}/gdb-build"
           run "gdb configure" "${SOURCE_CODE_DIR}/gdb/configure" \
