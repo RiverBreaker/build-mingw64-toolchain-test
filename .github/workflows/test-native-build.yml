@@ -695,9 +695,9 @@ jobs:
       - name: build Extension components
         shell: msys2 {0}
         env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
         run: |
+          GITHUB_WORKSPACE=$(cygpath -u "${{ github.workspace }}")
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
           export BUILD_DIR="${GITHUB_WORKSPACE}/build"
           export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
