@@ -67,8 +67,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv ncurses readline gdbm )
-          github_pkgs=( mingw-w64 zlib expat )
+          gnu_pkgs=( gcc binutils libiconv )
+          github_pkgs=( mingw-w64 zlib )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -99,27 +99,13 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
-              expat)
-                ver="${EXPAT}"
-                github_author="libexpat"
-                project_name="libexpat"
-                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "expat" ]]; then
-              tail="${p}-${ver}.tar.gz"
-            else
-              tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
-            fi
-            if [[ "${p}" == "expat" ]]; then
-              EXPAT_TAG="R_${ver//./_}"
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
-            else
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
-            fi
+            tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
+            URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
@@ -577,12 +563,6 @@ jobs:
           echo "== Remove stray debug files (if any) =="
           find . -type f -name '*.debug' -delete
 
-      - name: Tree Native dir
-        shell: bash
-        run: |
-          echo "原生工具链目录结构:"
-          tree -L 3 "${GITHUB_WORKSPACE}/mingw-w64-native" || true
-
       - name: upload logs
         if: always() || cancelled() || failure()
         uses: actions/upload-artifact@v4
@@ -642,8 +622,8 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export_versions_from_json "${GITHUB_WORKSPACE}/dependencies.json" ${GCC_VERSION} local
 
-          gnu_pkgs=( make gdb )
-          github_pkgs=( ninja cmake pkgconf python openssl libffi )
+          gnu_pkgs=( make gdb ncurses readline gdbm )
+          github_pkgs=( ninja cmake pkgconf python openssl libffi expat )
           alone_pkgs=( sqlite )
 
           for p in "${gnu_pkgs[@]}"; do
@@ -674,6 +654,11 @@ jobs:
                 ver="${CMAKE}"
                 github_author="Kitware"
                 project_name="CMake"
+                ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
                 ;;
               *)
                 error "未知的 GitHub 包: ${p}"
