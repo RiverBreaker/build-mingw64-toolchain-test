@@ -370,8 +370,10 @@ jobs:
           run "zlib: make" make -j$(nproc)
           run "zlib: make install" make install
 
-          export ZLIB_INCLUDE="${OPT_DIR}/include"
-          export ZLIB_LIB="${OPT_DIR}/lib"
+          export CFLAGS="${CFLAGS} -I${OPT_DIR}/include"
+          export CXXFLAGS="${CXXFLAGS} -I${OPT_DIR}/include"
+          export LDFLAGS="${LDFLAGS} -L${OPT_DIR}/lib"
+          export CPPFLAGS="${CPPFLAGS} -I${OPT_DIR}/include"
 
           # 这些是gcc的直接依赖，需要安装在主目录
           for d in gmp mpfr mpc isl; do
