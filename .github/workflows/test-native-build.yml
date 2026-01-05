@@ -887,21 +887,21 @@ jobs:
           # build python ${OPT_DIR}
           run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
           cd "${BUILD_DIR}/python-build"
-          run "python configure" "${SOURCE_CODE_DIR}/python/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --enable-optimizations \
-            --enable-loadable-sqlite-extensions \
-            --without-ensurepip --without-c-locale-coercion \
-            --with-system-expat \
-            --with-system-ffi \
-            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            LDFLAGS="${BASE_LDFLAGS}" \
+          run "python configure" "${SOURCE_CODE_DIR}/python/configure" `
+            --build="${BUILD}" `
+            --host="${HOST}" `
+            --target="${TARGET}" `
+            --prefix="${OPT_DIR}" `
+            --enable-shared `
+            --enable-optimizations `
+            --enable-loadable-sqlite-extensions `
+            --without-ensurepip --without-c-locale-coercion `
+            --with-system-expat `
+            --with-system-ffi `
+            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" `
+            CXXFLAGS="${BASE_CXXFLAGS}" `
+            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" `
+            LDFLAGS="${BASE_LDFLAGS}" `
             OPENSSL_LIBS="-lcrypto -lssl"
 
           run "python make" make -j$(nproc)
