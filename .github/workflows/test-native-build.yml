@@ -855,7 +855,7 @@ jobs:
             LDFLAGS="${BASE_LDFLAGS}"
           run "sqlite make" make -j$(nproc)
           run "sqlite install" make install
-          
+
       - name: build python ${OPT_DIR}
         shell: pwsh
         env:
@@ -956,7 +956,7 @@ jobs:
             CPPFLAGS="${BASE_CPPFLAGS} -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC -D_WIN32_WINNT=0x0601" \
             LDFLAGS="${BASE_LDFLAGS}"
           run "gdb make" make -j$(nproc)
-          run "gdb install" make install-strip
+          run "gdb install" make install
 
           # build make ${PREFIX}
 
