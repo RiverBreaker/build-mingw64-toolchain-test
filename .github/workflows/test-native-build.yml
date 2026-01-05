@@ -114,9 +114,6 @@ jobs:
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
-              TAG="v${ver}"
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
             if [[ "${p}" == "expat" ]]; then
               EXPAT_TAG="R_${ver//./_}"
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
