@@ -561,6 +561,11 @@ jobs:
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install-strip
 
+          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
+          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
+          export BASE_CPPFLAGS="-I${OPT_DIR}/include"
+          export BASE_LDFLAGS="-L${OPT_DIR}/lib"
+
           # build expat ${OPT_DIR}
           run "准备expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
           cd "${BUILD_DIR}/expat-build"
