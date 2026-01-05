@@ -636,7 +636,7 @@ jobs:
             p_val=${p^^}
             URL="${GNU_BASE_URL}/${p}/${p}-${!p_val}.tar.gz"
             run "下载 ${p} 源码" curl_download ${URL} "${SOURCE_CODE_DIR}"
-            run "解压 ${p} 源码" archive_extract ${p} ${p}-${!p_val}.tar.gz ${SOURCE_CODE_DIR}
+            run "解压 ${p} 源码" archive_extract ${p} "${SOURCE_CODE_DIR}/${p}-${!p_val}.tar.gz" ${SOURCE_CODE_DIR}
           done
           for p in "${github_pkgs[@]}";do
             case "${p}" in
