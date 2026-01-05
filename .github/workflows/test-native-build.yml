@@ -67,8 +67,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv )
-          github_pkgs=( mingw-w64 zlib )
+          gnu_pkgs=( gcc binutils libiconv ncurses readline gdbm )
+          github_pkgs=( mingw-w64 zlib expat )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -99,13 +99,30 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
-            URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            if [[ "${p}" == "expat" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            else
+              tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
+            fi
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
+              TAG="v${ver}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
+            if [[ "${p}" == "expat" ]]; then
+              EXPAT_TAG="R_${ver//./_}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
+            else
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            fi
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
@@ -547,6 +564,74 @@ jobs:
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install-strip
 
+          # build expat ${OPT_DIR}
+          run "准备expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
+          cd "${BUILD_DIR}/expat-build"
+          run "expat configure" "${SOURCE_CODE_DIR}/expat/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "expat make" make -j$(nproc)
+          run "expat install" make install
+
+          # build ncurses ${OPT_DIR}
+          run "准备ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
+          cd "${BUILD_DIR}/ncurses-build"
+          run "ncurses configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ACCESS" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} " \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "ncurses make" make -j$(nproc)
+          run "ncurses install" make install
+
+          # build readline ${OPT_DIR}
+          run "准备readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
+          cd "${BUILD_DIR}/readline-build"
+          run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon -DNCURSES_STATIC" \
+            CXXFLAGS="${BASE_CXXFLAGS} -DNCURSES_STATIC" \
+            CPPFLAGS="${BASE_CPPFLAGS} -DNCURSES_STATIC" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "readline make" make -j$(nproc)
+          run "readline install" make install
+
+          # build gdbm ${OPT_DIR}
+          run "准备gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
+          cd "${BUILD_DIR}/gdbm-build"
+          run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-shared \
+            --disable-static \
+            --enable-libgdbm-compat \
+            CFLAGS="${BASE_CFLAGS} -fcommon" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "gdbm make" make -j$(nproc)
+          run "gdbm install" make install
+
           cd "${PREFIX}" || exit 1
 
           echo "== Strip exe / dll =="
@@ -628,8 +713,8 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export_versions_from_json "${GITHUB_WORKSPACE}/dependencies.json" ${GCC_VERSION} local
 
-          gnu_pkgs=( make gdbm gdb ncurses readline )
-          github_pkgs=( ninja cmake pkgconf expat python openssl libffi )
+          gnu_pkgs=( make gdb )
+          github_pkgs=( ninja cmake pkgconf python openssl libffi )
           alone_pkgs=( sqlite )
 
           for p in "${gnu_pkgs[@]}"; do
@@ -660,11 +745,6 @@ jobs:
                 ver="${CMAKE}"
                 github_author="Kitware"
                 project_name="CMake"
-                ;;
-              expat)
-                ver="${EXPAT}"
-                github_author="libexpat"
-                project_name="libexpat"
                 ;;
               *)
                 error "未知的 GitHub 包: ${p}"
@@ -715,10 +795,10 @@ jobs:
           export TARGET_DIR="${PREFIX}/${TARGET}"
           export OPT_DIR="${PREFIX}/opt"
 
-          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include -I${TARGET_DIR}/include"
-          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include -I${TARGET_DIR}/include"
-          export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
-          export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
+          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
+          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
+          export BASE_CPPFLAGS="-I${OPT_DIR}/include"
+          export BASE_LDFLAGS="-L${OPT_DIR}/lib"
 
           # build libffi ${OPT_DIR}
           run "准备libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
@@ -737,74 +817,6 @@ jobs:
           run "libffi make" make -j$(nproc)
           run "libffi install" make install
 
-          # build expat ${OPT_DIR}
-          run "准备expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
-          cd "${BUILD_DIR}/expat-build"
-          run "expat configure" "${SOURCE_CODE_DIR}/expat/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS}" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "expat make" make -j$(nproc)
-          run "expat install" make install
-
-          # build ncurses ${OPT_DIR}
-          run "准备ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
-          cd "${BUILD_DIR}/ncurses-build"
-          run "ncurses configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ACCESS" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS} " \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "ncurses make" make -j$(nproc)
-          run "ncurses install" make install
-
-          # build readline ${OPT_DIR}
-          run "准备readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
-          cd "${BUILD_DIR}/readline-build"
-          run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "readline make" make -j$(nproc)
-          run "readline install" make install
-
-          # build gdbm ${OPT_DIR}
-          run "准备gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
-          cd "${BUILD_DIR}/gdbm-build"
-          run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            --enable-libgdbm-compat \
-            CFLAGS="${BASE_CFLAGS} -fcommon" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "gdbm make" make -j$(nproc)
-          run "gdbm install" make install
-
           # build openssl ${OPT_DIR}
           run "准备openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build"
           cd "${BUILD_DIR}/openssl-build"
@@ -812,6 +824,8 @@ jobs:
             --prefix="${OPT_DIR}" \
             --libdir="${OPT_DIR}/lib" \
             --openssldir="${OPT_DIR}/ssl" \
+            --with-zlib-include="${OPT_DIR}/include" \
+            --with-zlib-lib="${OPT_DIR}/lib" \
             shared \
             threads \
             zlib \
