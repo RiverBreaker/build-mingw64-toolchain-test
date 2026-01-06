@@ -476,7 +476,7 @@ jobs:
           cp -fv $POSIX_DIR/lib/libwinpthread.dll.a $TARGET_DIR/lib/ || { echo "15"; return 1; }
           cp -fv $POSIX_DIR/lib/libpthread.dll.a $TARGET_DIR/lib/ || { echo "16"; return 1; }
           cp -fv $POSIX_DIR/lib/libwinpthread.a $TARGET_DIR/lib/ || { echo "17"; return 1; }
-          cp -fv $POSIX_DIR/lib/libpthread.a $TARGET_DIRT/lib/ || { echo "18"; return 1; }
+          cp -fv $POSIX_DIR/lib/libpthread.a $TARGET_DIR/lib/ || { echo "18"; return 1; }
           cp -fv $POSIX_DIR/include/*.h $TARGET_DIR/include/ || { echo "19"; return 1; }
 
           # =========== 12. mingw-w64 其他库 ===========
