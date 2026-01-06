@@ -272,6 +272,7 @@ jobs:
           export BUILD_DIR="${GITHUB_WORKSPACE}/build-native"
           export CROSS_PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
           export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
+          export POSIX_DIR="${GITHUB_WORKSPACE}/winpthreads"
 
           export BUILD="x86_64-pc-linux-gnu"
           export HOST="x86_64-w64-mingw32"
@@ -428,24 +429,32 @@ jobs:
           run "mingw-crt: make" make -j$(nproc)
           run "mingw-crt: install" make install
 
-          # # =========== mingw-w64-winpthreads =================
-          # run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build"
-          # cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
-          # run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
-          #   --prefix="${TARGET_DIR}" \
-          #   --host="${TARGET}" \
-          #   --build="${BUILD}" \
-          #   --with-sysroot="${TARGET_DIR}" \
-          #   --enable-static \
-          #   --enable-shared \
-          #   --disable-multilib \
-          #   CFLAGS="${CFLAGS}" \
-          #   CXXFLAGS="${CXXFLAGS}" \
-          #   LDFLAGS="${LDFLAGS}" \
-          #   CPPFLAGS="${CPPFLAGS}"
+          # =========== mingw-w64-winpthreads =================
+          run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build"
+          cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
+          run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
+            --prefix="${POSIX_DIR}" \
+            --host="${TARGET}" \
+            --build="${BUILD}" \
+            --with-sysroot="${TARGET_DIR}" \
+            --enable-static \
+            --enable-shared \
+            --disable-multilib \
+            CFLAGS="${CFLAGS}" \
+            CXXFLAGS="${CXXFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            CPPFLAGS="${CPPFLAGS}"
 
-          # run "mingw-w64-winpthreads: make" make -j$(nproc)
-          # run "mingw-w64-winpthreads: install" make install
+          run "mingw-w64-winpthreads: make" make -j$(nproc)
+          run "mingw-w64-winpthreads: install" make install
+
+          cp -fv $POSIX_DIR/bin/libwinpthread-1.dll $PREFIX/bin/ || { echo "13"; return 1; }
+          cp -fv $POSIX_DIR/bin/libwinpthread-1.dll $TARGET_DIR/lib/ || { echo "14"; return 1; }
+          cp -fv $POSIX_DIR/lib/libwinpthread.dll.a $TARGET_DIR/lib/ || { echo "15"; return 1; }
+          cp -fv $POSIX_DIR/lib/libpthread.dll.a $TARGET_DIR/lib/ || { echo "16"; return 1; }
+          cp -fv $POSIX_DIR/lib/libwinpthread.a $TARGET_DIR/lib/ || { echo "17"; return 1; }
+          cp -fv $POSIX_DIR/lib/libpthread.a $TARGE_DIRT/lib/ || { echo "18"; return 1; }
+          cp -fv $POSIX_DIR/include/*.h $TARGET_DIR/include/ || { echo "19"; return 1; }
 
           # =========== 2. binutils (安装到 ${PREFIX}) ===========
           run "准备 binutils build dir" mkdir -p "${BUILD_DIR}/binutils-build"
