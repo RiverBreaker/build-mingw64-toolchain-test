@@ -718,10 +718,10 @@ jobs:
           export TARGET_DIR="${PREFIX}/${TARGET}"
           export OPT_DIR="${PREFIX}/opt"
 
-          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${OPT_DIR}/include"
-          export BASE_CPPFLAGS="-I${OPT_DIR}/include"
-          export BASE_LDFLAGS="-L${OPT_DIR}/lib"
+          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
 
           # build libffi ${OPT_DIR}
           run "准备libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
