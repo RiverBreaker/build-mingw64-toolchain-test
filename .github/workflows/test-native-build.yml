@@ -272,7 +272,7 @@ jobs:
           export BUILD_DIR="${GITHUB_WORKSPACE}/build-native"
           export CROSS_PREFIX="${GITHUB_WORKSPACE}/mingw-w64-cross"
           export PREFIX="${GITHUB_WORKSPACE}/mingw-w64-native"
-          export POSIX_DIR="${GITHUB_WORKSPACE}/winpthreads"
+          # export POSIX_DIR="${GITHUB_WORKSPACE}/winpthreads"
 
           export BUILD="x86_64-pc-linux-gnu"
           export HOST="x86_64-w64-mingw32"
@@ -433,7 +433,7 @@ jobs:
           run "准备 mingw-w64-winpthreads build dir" mkdir -p "${BUILD_DIR}/mingw-w64-winpthreads-build"
           cd "${BUILD_DIR}/mingw-w64-winpthreads-build"
           run "mingw-w64-winpthreads: configure" "${SOURCE_CODE_DIR}/mingw-w64/mingw-w64-libraries/winpthreads/configure" \
-            --prefix="${POSIX_DIR}" \
+            --prefix="${TARGET_DIR}" \
             --host="${TARGET}" \
             --build="${BUILD}" \
             --with-sysroot="${TARGET_DIR}" \
@@ -470,14 +470,6 @@ jobs:
             CPPFLAGS="${CPPFLAGS}"
           run "binutils: make" make -j$(nproc)
           run "binutils: make install" make install
-
-          cp -fv $POSIX_DIR/bin/libwinpthread-1.dll $PREFIX/bin/ || { echo "13"; return 1; }
-          cp -fv $POSIX_DIR/bin/libwinpthread-1.dll $TARGET_DIR/lib/ || { echo "14"; return 1; }
-          cp -fv $POSIX_DIR/lib/libwinpthread.dll.a $TARGET_DIR/lib/ || { echo "15"; return 1; }
-          cp -fv $POSIX_DIR/lib/libpthread.dll.a $TARGET_DIR/lib/ || { echo "16"; return 1; }
-          cp -fv $POSIX_DIR/lib/libwinpthread.a $TARGET_DIR/lib/ || { echo "17"; return 1; }
-          cp -fv $POSIX_DIR/lib/libpthread.a $TARGET_DIR/lib/ || { echo "18"; return 1; }
-          cp -fv $POSIX_DIR/include/*.h $TARGET_DIR/include/ || { echo "19"; return 1; }
 
           # =========== 12. mingw-w64 其他库 ===========
           # libmangle (安装到 ${TARGET_DIR})
@@ -613,7 +605,7 @@ jobs:
            wget sshpass
            texinfo autogen
            dejagnu pkgconf
-           jq coreutils
+           jq coreutils python3 pkg-config
 
       - name: download source code
         shell: msys2 {0}
@@ -632,8 +624,9 @@ jobs:
           export_versions_from_json "${GITHUB_WORKSPACE}/dependencies.json" ${GCC_VERSION} local
 
           gnu_pkgs=( make gdb ncurses readline gdbm )
-          github_pkgs=( ninja cmake pkgconf python openssl libffi expat )
+          github_pkgs=( ninja cmake pkgconf xz openssl libffi expat )
           alone_pkgs=( sqlite )
+          git_clone_pkgs=( python )
 
           for p in "${gnu_pkgs[@]}"; do
             p_val=${p^^}
@@ -643,10 +636,10 @@ jobs:
           done
           for p in "${github_pkgs[@]}";do
             case "${p}" in
-              python)
+              xz)
                 ver="${PYTHON}"
-                github_author="msys2-contrib"
-                project_name="cpython-mingw"
+                github_author="tukaani-project"
+                project_name="xz"
                 ;;
               openssl|libffi|pkgconf)
                 pkg_name=${p^^}
@@ -674,12 +667,12 @@ jobs:
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]] || [[ "${p}" == "xz" ]]; then
               tail="${p}-${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]] || [[ "${p}" == "xz" ]]; then
               TAG="v${ver}"
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
             elif [[ "${p}" == "expat" ]]; then
@@ -693,6 +686,9 @@ jobs:
           done
           run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
           run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+
+          run "git clone cpython-mingw source code" git clone -b mingw-v${PYTHON} https://github.com/msys2-contrib/cpython-mingw.git "${SOURCE_CODE_DIR}/python"
+
           ls -l "${SOURCE_CODE_DIR}"
 
       - name: build Extension components
@@ -759,6 +755,7 @@ jobs:
 
           # build ncurses ${OPT_DIR}
           run "准备ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
+
           cd "${BUILD_DIR}/ncurses-build"
           run "ncurses configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
             --build="${BUILD}" \
@@ -775,6 +772,8 @@ jobs:
 
           # build readline ${OPT_DIR}
           run "准备readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
+          cd "${SOURCE_CODE_DIR}/readline"
+          run "patch readline" patch -p1 < "${GITHUB_WORKSPACE}/patches/readline-8.2-fix-mingw32.patch"
           cd "${BUILD_DIR}/readline-build"
           run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
             --build="${BUILD}" \
@@ -792,6 +791,9 @@ jobs:
 
           # build gdbm ${OPT_DIR}
           run "准备gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
+          cd "${SOURCE_CODE_DIR}/gdbm"
+          run "patch gdbm" patch -p1 < "${GITHUB_WORKSPACE}/patches/gdbm-fix-support-win32.patch"
+          run "remake configure" autoreconf -fiv
           cd "${BUILD_DIR}/gdbm-build"
           run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
             --build="${BUILD}" \
@@ -827,6 +829,22 @@ jobs:
           run "openssl make" make -j$(nproc)
           run "openssl install" make install
 
+          run "xz build dir" mkdir -p "${BUILD_DIR}/xz-build"
+          cd "${BUILD_DIR}/xz-build"
+          run "xz configure" "${SOURCE_CODE_DIR}/xz/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+          --enable-static --disable-shared \
+          --disable-rpath --disable-lzma-links \
+              CFLAGS="${BASE_CFLAGS}" \
+              CXXFLAGS="${BASE_CXXFLAGS}" \
+              CPPFLAGS="${BASE_CPPFLAGS}" \
+              LDFLAGS="${BASE_LDFLAGS}"
+          run "xz make" make -j$(nproc)
+          run "xz make install" make install
+
           # build sqlite ${OPT_DIR}
           run "准备sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
           cd "${BUILD_DIR}/sqlite-build"
@@ -853,6 +871,7 @@ jobs:
             --build="${BUILD}" \
             --host="${HOST}" \
             --prefix="${OPT_DIR}" \
+            --with-build-python="/usr/bin/python3.exe" \
             --enable-shared \
             --enable-optimizations \
             --enable-loadable-sqlite-extensions \

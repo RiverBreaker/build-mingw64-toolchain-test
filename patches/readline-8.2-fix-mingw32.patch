@@ -1,0 +1,160 @@
+--- a/rlprivate.h	2026-01-08 09:20:53.673798749 +0800
++++ b/rlprivate.h	2026-01-08 09:22:58.893077988 +0800
+@@ -305,6 +305,19 @@
+ extern int _rl_timeout_handle_sigalrm (void);
+ #if defined (_POSIXSELECT_H_)
+ /* use as a sentinel for fd_set, struct timeval,  and sigset_t definitions */
++#if defined (__MINGW32__)
++/* still doesn't work; no alarm() so we provide a non-working stub. */
++#  define RL_TIMEOUT_USE_SIGALRM
++#elif defined (HAVE_SELECT) || defined (HAVE_PSELECT)
++#  define RL_TIMEOUT_USE_SELECT
++#elif defined (_MSC_VER)
++/* can't use select/pselect or SIGALRM, so no timeouts */
++#else
++#  define RL_TIMEOUT_USE_SIGALRM
++#endif
++
++#endif
++#if defined (RL_TIMEOUT_USE_SELECT)
+ extern int _rl_timeout_select (int, fd_set *, fd_set *, fd_set *, const struct timeval *, const sigset_t *);
+ #endif
+ 
+--- a/input.c	2026-01-08 09:21:12.727828351 +0800
++++ b/input.c	2026-01-08 09:53:58.142225568 +0800
+@@ -27,6 +27,13 @@
+ #  include <floss.h>
+ #endif
+ 
++/* These are needed to get the declaration of 'alarm' when including
++   <unistd.h>. I'm not sure it's needed, but the compiler might require it. */
++#if defined (__MINGW32__)
++#  define __USE_MINGW_ALARM
++#  define _POSIX
++#endif
++
+ #if defined (HAVE_CONFIG_H)
+ #  include <config.h>
+ #endif
+@@ -139,7 +146,7 @@
+ /* Readline timeouts */
+ 
+ /* I don't know how to set a timeout for _getch() in MinGW32, so we use
+-   SIGALRM. */
++   SIGALRM. We now define RL_TIMEOUT_USE_SELECT or RL_TIMEOUT_USE_SIGALRM in rlprivate.h */
+ #if (defined (HAVE_PSELECT) || defined (HAVE_SELECT)) && !defined (__MINGW32__)
+ #  define RL_TIMEOUT_USE_SELECT
+ #else
+@@ -150,8 +157,10 @@
+ int rl_timeout_remaining (unsigned int *, unsigned int *);
+ 
+ int _rl_timeout_init (void);
+-int _rl_timeout_sigalrm_handler (void);
+-int _rl_timeout_select (int, fd_set *, fd_set *, fd_set *, const struct timeval *, const sigset_t *);
++int _rl_timeout_handle_sigalrm (void);
++#if defined (RL_TIMEOUT_USE_SELECT)
++	int _rl_timeout_select (int, fd_set *, fd_set *, fd_set *, const struct timeval *, const sigset_t *);
++#endif
+ 
+ static void _rl_timeout_handle (void);
+ #if defined (RL_TIMEOUT_USE_SIGALRM)
+@@ -533,7 +542,16 @@
+   timerclear (&it.it_value);
+   setitimer (ITIMER_REAL, &it, NULL);
+ }
+-#  else
++#  else /* !HAVE_SETITIMER */
++#    if defined (__MINGW32_MAJOR_VERSION)
++/* mingw.org's MinGW doesn't have alarm(3).  */
++unsigned int
++alarm (unsigned int seconds)
++{
++  return 0;
++}
++#    endif /* __MINGW32_MAJOR_VERSION */
++
+ static int
+ set_alarm (unsigned int *secs, unsigned int *usecs)
+ {
+@@ -548,8 +566,8 @@
+ {
+   alarm (0);
+ }
+-#  endif
+-#endif
++#  endif /* !HAVE_SETITIMER */
++#endif /* RL_TIMEOUT_USE_SIGALRM */
+ 
+ /* Set a timeout which will be used for the next call of `readline
+    ()'.  When (0, 0) are specified the timeout is cleared.  */
+@@ -649,7 +667,7 @@
+ 
+ /* This should only be called if RL_TIMEOUT_USE_SELECT is defined. */
+ 
+-#if defined (HAVE_PSELECT) || defined (HAVE_SELECT)
++#if defined (RL_TIMEOUT_USE_SELECT)
+ int
+ _rl_timeout_select (int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval *timeout, const sigset_t *sigmask)
+ {
+@@ -717,8 +735,8 @@
+ _rl_timeout_handle ()
+ {
+   if (rl_timeout_event_hook)
+-    (*rl_timeout_event_hook) ();
+-
++    (*rl_timeout_event_hook)();
++    
+   RL_SETSTATE(RL_STATE_TIMEOUT);
+   _rl_abort_internal ();
+ }
+@@ -812,13 +830,13 @@
+ 
+   fd = fileno (stream);
+   while (1)
+-    {
++  {
+       RL_CHECK_SIGNALS ();
+ 
+       /* We know at this point that _rl_caught_signal == 0 */
+ 
+ #if defined (__MINGW32__)
+-      if (isatty (fd)
++      if (isatty (fd))
+ 	return (_getch ());	/* "There is no error return." */
+ #endif
+       result = 0;
+@@ -826,7 +844,7 @@
+       /* At this point, if we have pselect, we're using select/pselect for the
+ 	 timeouts. We handled MinGW above. */
+       FD_ZERO (&readfds);
+-      FD_SET (fd, &readfds);
++      FD_SET(fd, &readfds);
+ #  if defined (HANDLE_SIGNALS)
+       result = _rl_timeout_select (fd + 1, &readfds, NULL, NULL, NULL, &_rl_orig_sigset);
+ #  else
+@@ -846,7 +864,7 @@
+       /* If zero characters are returned, then the file that we are
+ 	 reading from is empty!  Return EOF in that case. */
+       if (result == 0)
+-	return (EOF);
++	return EOF;
+ 
+ #if defined (__BEOS__)
+       if (errno == EINTR)
+@@ -910,11 +928,11 @@
+ 	RL_CHECK_SIGNALS ();
+ #endif /* SIGWINCH */
+ #if defined (SIGALRM)
+-      else if (_rl_caught_signal == SIGALRM
+-#  if defined (SIGVTALRM)
+-		|| _rl_caught_signal == SIGVTALRM
+-#  endif
+-	      )
++# if defined (SIGVTALRM)
++      else if (_rl_caught_signal == SIGALRM || _rl_caught_signal == SIGVTALRM)
++# else
++      else if (_rl_caught_signal == SIGALRM)
++# endif
+         RL_CHECK_SIGNALS ();
+ #endif  /* SIGALRM */
+ 
