@@ -900,6 +900,7 @@ jobs:
           # build python ${OPT_DIR}
           unset TARGET
           run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
+          cd "${SOURCE_CODE_DIR}/python" && autoreconf -fi
           cd "${BUILD_DIR}/python-build"
           run "python configure" bash -c '
             CURSES_CFLAGS="-I/e/build-mingw64/tools/native/opt/include/ncursesw" \
