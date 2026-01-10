@@ -118,7 +118,7 @@ jobs:
                 ;;
               bzip2)
                 ver="${BZIP2_VER}"
-                github_author="RriverBreaker"
+                github_author="RiverBreaker"
                 project_name="bzip2-autoconf"
                 ;;
               *)
