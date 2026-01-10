@@ -151,6 +151,7 @@ jobs:
           run "git clone cpython-mingw source code" git clone -b mingw-v${PYTHON} https://github.com/msys2-contrib/cpython-mingw.git "${SOURCE_CODE_DIR}/python"
           ls ${SOURCE_CODE_DIR}
           cd "${SOURCE_CODE_DIR}/python" || echo "cd ${SOURCE_CODE_DIR}/python 失败"
+          echo ===========python===========
           ls ${SOURCE_CODE_DIR}/python
 
 
