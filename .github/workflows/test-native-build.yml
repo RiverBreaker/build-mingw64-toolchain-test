@@ -57,6 +57,7 @@ jobs:
 
           export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+          SQLITE_BASE_URL="https://sqlite.org"
 
           # optional tuning
           export FORCE_COLOR=1
@@ -67,8 +68,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv )
-          github_pkgs=( mingw-w64 zlib )
+          gnu_pkgs=( gcc binutils libiconv ncurses readline gdbm )
+          github_pkgs=( mingw-w64 zlib xz openssl libffi expat )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -99,16 +100,53 @@ jobs:
                 github_author="madler"
                 project_name="zlib"
                 ;;
+              xz)
+                ver="${XZ}"
+                github_author="tukaani-project"
+                project_name="xz"
+                ;;
+              openssl|libffi)
+                pkg_name=${p^^}
+                ver="${!pkg_name}"
+                github_author="${p}"
+                project_name="${p}"
+                ;;
+              expat)
+                ver="${EXPAT}"
+                github_author="libexpat"
+                project_name="libexpat"
+                ;;
+              bzip2)
+                ver="${BZIP2}"
+                github_author="RriverBreaker"
+                project_name="bzip2-autoconf"
+                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
-            URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            if [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "xz" ]]; then
+              tail="${p}-${ver}.tar.gz"
+            elif [[ "${p}" == "bzip2" ]]; then
+              tail="${p}-autoconf-${ver}.tar.gz"
+            else
+              tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
+            fi
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "xz" ]]; then
+              TAG="v${ver}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
+            elif [[ "${p}" == "expat" ]]; then
+              EXPAT_TAG="R_${ver//./_}"
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
+            else
+              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
+            fi
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
+          run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
           info "下载与解压步骤完成"
 
       - name: Build cross
@@ -303,13 +341,6 @@ jobs:
             fi
             run "创建目录 ${d}" mkdir -p "${d}"
           done
-          pkgs=( binutils libiconv make termcap ncurses readline gdbm gdb python openssl sqlite ninja cmake libffi pkgconf expat )
-          info "准备清理环境变量"
-          for p in "${pkgs[@]}"; do
-            val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
-            unset "${val}"
-          done
-          unset MINGW_W64 gcc_version
 
           cd "${BUILD_DIR}"
 
@@ -534,19 +565,177 @@ jobs:
             LDFLAGS="${LDFLAGS}" \
             CPPFLAGS="${CPPFLAGS}"
 
-          # 设置使用新构建的gcc作为编译器
-          export CC="${CROSS_PREFIX}/bin/${TARGET}-gcc"
-          export CXX="${CROSS_PREFIX}/bin/${TARGET}-g++"
-          export LD="${CROSS_PREFIX}/bin/${TARGET}-ld"
-          export AR="${CROSS_PREFIX}/bin/${TARGET}-ar"
-          export AS="${CROSS_PREFIX}/bin/${TARGET}-as"
-          export RANLIB="${CROSS_PREFIX}/bin/${TARGET}-ranlib"
-          export STRIP="${CROSS_PREFIX}/bin/${TARGET}-strip"
-          export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
-          export FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran"
-
           run "gcc stage2: make" make -j$(nproc)
           run "gcc stage2: make install" make install-strip
+          cp "${TARGET_DIR}/bin/libwinpthread-1.dll" "${PREFIX}/bin"
+
+          export BASE_CFLAGS="-O2 -pipe -fno-ident -I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_CXXFLAGS="-O2 -pipe -fno-ident -I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
+          export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
+
+          # bzip2
+          run "bzip2 build dir" mkdir -p "${BUILD_DIR}/bzip2-build"
+          cd "${BUILD_DIR}/bzip2-build"
+          run "bzip2 configure" "${SRC_DIR}/bzip2/configure" \
+          --build="${BUILD}" \
+          --host="${HOST}" \
+          --target="${HOST}" \
+          --prefix="${OPT_DIR}" \
+          --disable-shared \
+          --enable-static \
+          CFLAGS="${BASE_CFLAGS}" \
+          CXXFLAGS="${BASE_CXXFLAGS}" \
+          CPPFLAGS="${BASE_CPPFLAGS}" \
+          LDFLAGS="${BASE_LDFLAGS}"
+          run "bzip2 make" make -j$(nproc)
+          run "bzip2 install" make install
+
+          # ============ libffi
+          run "准备 libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
+          cd "${BUILD_DIR}/libffi-build"
+          run "libffi configure" "${SOURCE_CODE_DIR}/libffi/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --enable-shared --disable-static \
+              CFLAGS="${BASE_CFLAGS}" \
+              CXXFLAGS="${BASE_CXXFLAGS}" \
+              CPPFLAGS="${BASE_CPPFLAGS}" \
+              LDFLAGS="${BASE_LDFLAGS}"
+          run "libffi make" make -j$(nproc)
+          run "libffig make install" make install
+
+          # =========== 构建expat
+          run "准备 expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
+          cd "${BUILD_DIR}/expat-build"
+          run "expat: configure" "${SOURCE_CODE_DIR}/expat/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --enable-static \
+            --disable-shared \
+            --without-docbook \
+            --without-xmlwf \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "expat: make" make -j$(nproc)
+          run "expat: make install" make install
+
+          # =========== 构建ncurses
+          run "准备 ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
+          cd "${BUILD_DIR}/ncurses-build"
+          run "ncurses: configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
+            --prefix="${OPT_DIR}" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --without-ada --with-cxx \
+            --without-pthread --enable-pc-files \
+            --with-pkg-config \
+            --with-pkg-config-libdir=${OPT_DIR}/lib/pkgconfig \
+            --disable-rpath --enable-colorfgbg \
+            --disable-symlinks --enable-warnings \
+            --enable-assertions --disable-home-terminfo \
+            --enable-database --enable-sp-funcs \
+            --enable-term-driver --enable-interop --enable-widec --without-trace \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ACCESS" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} " \
+            LDFLAGS="${BASE_LDFLAGS}"
+
+          run "ncurses: make" make -j$(nproc)
+          run "ncurses: make install" make install
+
+          # readline
+          run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
+          cd ${SOURCE_CODE_DIR}/readline && patch -p1 < "${GITHUB_WORKSPACE}/readline-8.2-fix-mingw32.patch"
+          cd "${BUILD_DIR}/readline-build"
+          run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" --disable-shared --enable-static --without-curses \
+            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon -DNCURSES_STATIC -D_WIN32_WINNT=0x0600" \
+            CXXFLAGS="${BASE_CXXFLAGS} -DNCURSES_STATIC -D_WIN32_WINNT=0x0600" \
+            CPPFLAGS="${BASE_CPPFLAGS} -DNCURSES_STATIC -D_WIN32_WINNT=0x0600" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "readline make" make -j$(nproc)
+          run "readline make install" make install
+
+          # gdbm
+          run "gdbm build dir mk" mkdir -p "${BUILD_DIR}/gdbm-build"
+          cd ${SOURCE_CODE_DIR}/gdbm && patch -p1 < "${GITHUB_WORKSPACE}/gdbm-fix-support-win32.patch"
+          autoreconf -fi
+          cd "${BUILD_DIR}/gdbm-build"
+          run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
+            --host="${HOST}" \
+            --build="${BUILD}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" --disable-shared --enable-static --enable-libgdbm-compat \
+            CFLAGS="${BASE_CFLAGS} -fcommon" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "gdbm make" make -j$(nproc)
+          run "gdbm make install" make install
+
+          #openssl
+          run "openssl build dir mk" mkdir -p "${BUILD_DIR}/openssl-build"
+          cd "${BUILD_DIR}/openssl-build"
+          run "openssl configure" "${SOURCE_CODE_DIR}/openssl/Configure" \
+            --prefix="${OPT_DIR}" \
+            --libdir="${OPT_DIR}/lib" \
+            --openssldir="${OPT_DIR}/ssl" \
+            --with-zlib-include="${OPT_DIR}/include" \
+            --with-zlib-lib="${OPT_DIR}/lib" \
+            shared \
+            threads \
+            zlib \
+            enable-camellia enable-capieng \
+            enable-idea enable-mdc2 enable-rc5 \
+            enable-rfc3779 -D__MINGW_USE_VC2005_COMPAT \
+            -DOPENSSLBIN="${OPT_DIR}/bin" \
+            mingw64
+          run "openssl make" make -j$(nproc)
+          run "openssl make install" make install
+
+          #xz
+          run "xz build dir" mkdir -p "${BUILD_DIR}/xz-build"
+          cd "${BUILD_DIR}/xz-build"
+          run "xz configure" "${SOURCE_CODE_DIR}/xz/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-static --disable-shared \
+            --disable-rpath --disable-lzma-links \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS}" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "xz make" make -j$(nproc)
+          run "xz make install" make install
+
+          #sqlite
+          run "准备sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
+          cd "${BUILD_DIR}/sqlite-build"
+          run "sqlite configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
+            --build="${BUILD}" \
+            --host="${HOST}" \
+            --target="${TARGET}" \
+            --prefix="${OPT_DIR}" \
+            --enable-threadsafe \
+            --enable-shared \
+            --disable-static \
+            CFLAGS="${BASE_CFLAGS}" \
+            CXXFLAGS="${BASE_CXXFLAGS}" \
+            CPPFLAGS="${BASE_CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE" \
+            LDFLAGS="${BASE_LDFLAGS}"
+          run "sqlite make" make -j$(nproc)
+          run "sqlite install" make install
 
           cd "${PREFIX}" || exit 1
 
@@ -605,7 +794,7 @@ jobs:
            wget sshpass
            texinfo autogen
            dejagnu pkgconf
-           jq coreutils python3 pkg-config
+           jq coreutils pkg-config
 
       - name: download source code
         shell: msys2 {0}
@@ -623,9 +812,8 @@ jobs:
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
           export_versions_from_json "${GITHUB_WORKSPACE}/dependencies.json" ${GCC_VERSION} local
 
-          gnu_pkgs=( make gdb ncurses readline gdbm )
-          github_pkgs=( ninja cmake pkgconf xz openssl libffi expat )
-          alone_pkgs=( sqlite )
+          gnu_pkgs=( make gdb )
+          github_pkgs=( ninja cmake pkgconf )
           git_clone_pkgs=( python )
 
           for p in "${gnu_pkgs[@]}"; do
@@ -636,12 +824,7 @@ jobs:
           done
           for p in "${github_pkgs[@]}";do
             case "${p}" in
-              xz)
-                ver="${PYTHON}"
-                github_author="tukaani-project"
-                project_name="xz"
-                ;;
-              openssl|libffi|pkgconf)
+              pkgconf)
                 pkg_name=${p^^}
                 ver="${!pkg_name}"
                 github_author="${p}"
@@ -657,35 +840,30 @@ jobs:
                 github_author="Kitware"
                 project_name="CMake"
                 ;;
-              expat)
-                ver="${EXPAT}"
-                github_author="libexpat"
-                project_name="libexpat"
-                ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]] || [[ "${p}" == "xz" ]]; then
+            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "cmake" ]]; then
               tail="${p}-${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]] || [[ "${p}" == "xz" ]]; then
+            if [[ "${p}" == "cmake" ]]; then
               TAG="v${ver}"
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
-            elif [[ "${p}" == "expat" ]]; then
-              EXPAT_TAG="R_${ver//./_}"
-              URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
+            # elif [[ "${p}" == "expat" ]]; then
+            #   EXPAT_TAG="R_${ver//./_}"
+            #   URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${EXPAT_TAG}/${tail}"
             else
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/archive/refs/tags/${tail}"
             fi
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
           done
-          run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
-          run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          # run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          # run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
 
           run "git clone cpython-mingw source code" git clone -b mingw-v${PYTHON} https://github.com/msys2-contrib/cpython-mingw.git "${SOURCE_CODE_DIR}/python"
 
@@ -719,171 +897,29 @@ jobs:
           export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
           export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
 
-          # build libffi ${OPT_DIR}
-          run "准备libffi build dir" mkdir -p "${BUILD_DIR}/libffi-build"
-          cd "${BUILD_DIR}/libffi-build"
-          run "libffi configure" "${SOURCE_CODE_DIR}/libffi/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS}" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "libffi make" make -j$(nproc)
-          run "libffi install" make install
-
-          # build expat ${OPT_DIR}
-          run "准备expat build dir" mkdir -p "${BUILD_DIR}/expat-build"
-          cd "${BUILD_DIR}/expat-build"
-          run "expat configure" "${SOURCE_CODE_DIR}/expat/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS}" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "expat make" make -j$(nproc)
-          run "expat install" make install
-
-          # build ncurses ${OPT_DIR}
-          run "准备ncurses build dir" mkdir -p "${BUILD_DIR}/ncurses-build"
-
-          cd "${BUILD_DIR}/ncurses-build"
-          run "ncurses configure" "${SOURCE_CODE_DIR}/ncurses/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ACCESS" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS} " \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "ncurses make" make -j$(nproc)
-          run "ncurses install" make install
-
-          # build readline ${OPT_DIR}
-          run "准备readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
-          cd "${SOURCE_CODE_DIR}/readline"
-          run "patch readline" patch -p1 < "${GITHUB_WORKSPACE}/patches/readline-8.2-fix-mingw32.patch"
-          cd "${BUILD_DIR}/readline-build"
-          run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS} -D__USE_MINGW_ANSI_STDIO=1 -fcommon -DNCURSES_STATIC" \
-            CXXFLAGS="${BASE_CXXFLAGS} -DNCURSES_STATIC" \
-            CPPFLAGS="${BASE_CPPFLAGS} -DNCURSES_STATIC" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "readline make" make -j$(nproc)
-          run "readline install" make install
-
-          # build gdbm ${OPT_DIR}
-          run "准备gdbm build dir" mkdir -p "${BUILD_DIR}/gdbm-build"
-          cd "${SOURCE_CODE_DIR}/gdbm"
-          run "patch gdbm" patch -p1 < "${GITHUB_WORKSPACE}/patches/gdbm-fix-support-win32.patch"
-          run "remake configure" autoreconf -fiv
-          cd "${BUILD_DIR}/gdbm-build"
-          run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-shared \
-            --disable-static \
-            --enable-libgdbm-compat \
-            CFLAGS="${BASE_CFLAGS} -fcommon" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS}" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "gdbm make" make -j$(nproc)
-          run "gdbm install" make install
-
-          # build openssl ${OPT_DIR}
-          run "准备openssl build dir" mkdir -p "${BUILD_DIR}/openssl-build"
-          cd "${BUILD_DIR}/openssl-build"
-          run "openssl configure" "${SOURCE_CODE_DIR}/openssl/configure" \
-            --prefix="${OPT_DIR}" \
-            --libdir="${OPT_DIR}/lib" \
-            --openssldir="${OPT_DIR}/ssl" \
-            --with-zlib-include="${OPT_DIR}/include" \
-            --with-zlib-lib="${OPT_DIR}/lib" \
-            shared \
-            threads \
-            zlib \
-            enable-camellia enable-capieng \
-            enable-idea enable-mdc2 enable-rc5 \
-            enable-rfc3779 -D__MINGW_USE_VC2005_COMPAT \
-            -DOPENSSLBIN=\"\\\"${OPT_DIR}/bin\\\"\" mingw64
-          run "openssl make" make -j$(nproc)
-          run "openssl install" make install
-
-          run "xz build dir" mkdir -p "${BUILD_DIR}/xz-build"
-          cd "${BUILD_DIR}/xz-build"
-          run "xz configure" "${SOURCE_CODE_DIR}/xz/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-          --enable-static --disable-shared \
-          --disable-rpath --disable-lzma-links \
-              CFLAGS="${BASE_CFLAGS}" \
-              CXXFLAGS="${BASE_CXXFLAGS}" \
-              CPPFLAGS="${BASE_CPPFLAGS}" \
-              LDFLAGS="${BASE_LDFLAGS}"
-          run "xz make" make -j$(nproc)
-          run "xz make install" make install
-
-          # build sqlite ${OPT_DIR}
-          run "准备sqlite build dir" mkdir -p "${BUILD_DIR}/sqlite-build"
-          cd "${BUILD_DIR}/sqlite-build"
-          run "sqlite configure" "${SOURCE_CODE_DIR}/sqlite/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --target="${TARGET}" \
-            --prefix="${OPT_DIR}" \
-            --enable-threadsafe \
-            --enable-shared \
-            --disable-static \
-            CFLAGS="${BASE_CFLAGS}" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS} -DSQLITE_ENABLE_COLUMN_METADATA -DSQLITE_ENABLE_RTREE" \
-            LDFLAGS="${BASE_LDFLAGS}"
-          run "sqlite make" make -j$(nproc)
-          run "sqlite install" make install
-
           # build python ${OPT_DIR}
           unset TARGET
           run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
           cd "${BUILD_DIR}/python-build"
-          run "python configure" "${SOURCE_CODE_DIR}/python/configure" \
-            --build="${BUILD}" \
-            --host="${HOST}" \
-            --prefix="${OPT_DIR}" \
-            --with-build-python="/usr/bin/python3.exe" \
+          run "python configure" bash -c '
+            CURSES_CFLAGS="-I/e/build-mingw64/tools/native/opt/include/ncursesw" \
+            CURSES_LIBS="-L/e/build-mingw64/tools/native/opt/lib -lncursesw" \
+            "${SRC_DIR}/python/configure" \
+            --build=x86_64-w64-mingw32 \
+            --host=x86_64-w64-mingw32 \
+            --prefix=/e/build-mingw64/tools/native/opt \
             --enable-shared \
-            --enable-optimizations \
             --enable-loadable-sqlite-extensions \
-            --without-ensurepip --without-c-locale-coercion \
-            --with-system-expat --with-threads \
-            --with-system-ffi \
-            CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            CXXFLAGS="${BASE_CXXFLAGS}" \
-            CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-            LDFLAGS="${BASE_LDFLAGS}" \
-            OPENSSL_LIBS="-lcrypto -lssl"
-          grep -E "pthread|thread" pyconfig.h
+            --without-ensurepip \
+            --without-c-locale-coercion \
+            --with-system-expat \
+            --without-curses \
+          CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          CXXFLAGS="${BASE_CXXFLAGS}" \
+          CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          LDFLAGS="${BASE_LDFLAGS}" \
+          OPENSSL_LIBS="-lcrypto -lssl" \
+          LDSHARED="x86_64-w64-mingw32-gcc -shared"'
 
           run "python make" make -j$(nproc)
           run "python install" make install
