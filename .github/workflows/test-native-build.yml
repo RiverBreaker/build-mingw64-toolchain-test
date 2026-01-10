@@ -69,7 +69,7 @@ jobs:
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
           gnu_pkgs=( gcc binutils libiconv ncurses readline gdbm )
-          github_pkgs=( mingw-w64 zlib xz openssl libffi expat )
+          github_pkgs=( mingw-w64 zlib xz openssl libffi expat bzip2 )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -651,7 +651,7 @@ jobs:
 
           # readline
           run "准备 readline build dir" mkdir -p "${BUILD_DIR}/readline-build"
-          cd ${SOURCE_CODE_DIR}/readline && patch -p1 < "${GITHUB_WORKSPACE}/readline-8.2-fix-mingw32.patch"
+          cd ${SOURCE_CODE_DIR}/readline && patch -p1 < "${GITHUB_WORKSPACE}/patches/readline-8.2-fix-mingw32.patch"
           cd "${BUILD_DIR}/readline-build"
           run "readline configure" "${SOURCE_CODE_DIR}/readline/configure" \
             --host="${HOST}" \
@@ -667,7 +667,7 @@ jobs:
 
           # gdbm
           run "gdbm build dir mk" mkdir -p "${BUILD_DIR}/gdbm-build"
-          cd ${SOURCE_CODE_DIR}/gdbm && patch -p1 < "${GITHUB_WORKSPACE}/gdbm-fix-support-win32.patch"
+          cd ${SOURCE_CODE_DIR}/gdbm && patch -p1 < "${GITHUB_WORKSPACE}/patches/gdbm-fix-support-win32.patch"
           autoreconf -fi
           cd "${BUILD_DIR}/gdbm-build"
           run "gdbm configure" "${SOURCE_CODE_DIR}/gdbm/configure" \
