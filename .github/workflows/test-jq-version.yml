@@ -41,24 +41,25 @@ jobs:
 
           info "系统依赖安装完成"
 
-      - name: Get Dependencies Version
-        id: get-versions
+      - name: Download Source Code
         shell: bash
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GCC_VERSION: ${{ github.event.inputs.gcc-version }}
-          DEP_ISON_FILE: "${{ github.workspace }}/dependencies.json"
+          LOG_DIR: "${{ github.workspace }}/logs"
         run: |
           set -euo pipefail
           source "${GITHUB_WORKSPACE}/scripts/functions.sh"
+
           info "GCC 版本: ${GCC_VERSION}"
-          export_versions_from_json "${DEP_ISON_FILE}" "${GCC_VERSION}" local
+          DEP_JSON_FILE="${GITHUB_WORKSPACE}/dependencies.json"
+          run "获取组件版本信息" export_versions_from_json "${DEP_JSON_FILE}" "${GCC_VERSION}" local
 
           export GITHUB_BASE_URL="https://github.com"
           export GNU_BASE_URL="https://ftp.gnu.org/gnu"
+          SQLITE_BASE_URL="https://sqlite.org"
 
           # optional tuning
-          LOG_DIR="${GITHUB_WORKSPACE}/logs"
           export FORCE_COLOR=1
           mkdir -p "${LOG_DIR}"
           IGNORE_REGEX='array subscript 0 is outside array bounds'
@@ -67,8 +68,8 @@ jobs:
 
           export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code" && mkdir -p "${SOURCE_CODE_DIR}"
 
-          gnu_pkgs=( gcc binutils libiconv make gdbm gdb )
-          github_pkgs=( mingw-w64 ninja cmake pkgconf expat zlib python openssl sqlite libffi pdcurses )
+          gnu_pkgs=( gcc binutils libiconv ncurses readline gdbm )
+          github_pkgs=( mingw-w64 zlib xz openssl libffi expat bzip2 )
 
           for p in "${gnu_pkgs[@]}";do
             if [[ "${p}" == "gcc" ]]; then
@@ -76,15 +77,15 @@ jobs:
               echo "下载${p} 源码版本: ${ver}"
               run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
               run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-              for d in gcc gmp mpfr mpc isl; do
-                du -sh "${SOURCE_CODE_DIR}/${d}"
-              done
+              # for d in gcc gmp mpfr mpc isl; do
+              #   du -sh "${SOURCE_CODE_DIR}/${d}"
+              # done
             else
               val="$(echo "$p" | tr '[:lower:]' '[:upper:]')"
               ver=${!val}
               run "下载${p}-${ver} 源码" curl_download "${GNU_BASE_URL}/${p}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
               run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${p}-${ver}.tar.gz" "${SOURCE_CODE_DIR}"
-              du -sh "${SOURCE_CODE_DIR}/${p}"
+              # du -sh "${SOURCE_CODE_DIR}/${p}"
             fi
           done
           for p in "${github_pkgs[@]}";do
@@ -94,57 +95,45 @@ jobs:
                 github_author="mingw-w64"
                 project_name="mingw-w64"
                 ;;
-              python)
-                ver="${PYTHON}"
-                github_author="msys2-contrib"
-                project_name="cpython-mingw"
+              zlib)
+                ver="${ZLIB}"
+                github_author="madler"
+                project_name="zlib"
                 ;;
-              openssl|sqlite|libffi|pkgconf)
+              xz)
+                ver="${XZ}"
+                github_author="tukaani-project"
+                project_name="xz"
+                ;;
+              openssl|libffi)
                 pkg_name=${p^^}
                 ver="${!pkg_name}"
                 github_author="${p}"
                 project_name="${p}"
-                ;;
-              ninja)
-                ver="${NINJA}"
-                github_author="ninja-build"
-                project_name="ninja"
-                ;;
-              cmake)
-                ver="${CMAKE}"
-                github_author="Kitware"
-                project_name="CMake"
                 ;;
               expat)
                 ver="${EXPAT}"
                 github_author="libexpat"
                 project_name="libexpat"
                 ;;
-              zlib)
-                ver="${ZLIB}"
-                github_author="madler"
-                project_name="zlib"
-                ;;
-              pdcurses)
-                ver="${PDCURSES}"
-                github_author="wmcbrine"
-                project_name="PDCurses"
+              bzip2)
+                ver="${BZIP2_VER}"
+                github_author="RriverBreaker"
+                project_name="bzip2-autoconf"
                 ;;
               *)
                 error "未知的 GitHub 包: ${p}"
                 exit 1
                 ;;
             esac
-            if [[ "${p}" == "pkgconf" ]] || [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "cmake" ]]; then
+            if [[ "${p}" == "expat" ]] || [[ "${p}" == "libffi" ]] || [[ "${p}" == "openssl" ]] || [[ "${p}" == "xz" ]]; then
               tail="${p}-${ver}.tar.gz"
-            elif [[ "${p}" == "sqlite" ]]; then
-              tail="version-${ver}.tar.gz"
-            elif [[ "${p}" == "pdcurses" ]]; then
-              tail="${ver}.tar.gz"
+            elif [[ "${p}" == "bzip2" ]]; then
+              tail="${p}-autoconf-${ver}.tar.gz"
             else
               tail="v${ver}.tar.gz" # cpython-mingw zlib ninja
             fi
-            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "cmake" ]]; then
+            if [[ "${p}" == "libffi" ]] || [[ "${p}" == "xz" ]]; then
               TAG="v${ver}"
               URL="${GITHUB_BASE_URL}/${github_author}/${project_name}/releases/download/${TAG}/${tail}"
             elif [[ "${p}" == "expat" ]]; then
@@ -155,54 +144,12 @@ jobs:
             fi
             run "下载${p}-${ver} 源码" curl_download "${URL}" "${SOURCE_CODE_DIR}"
             run "解压${p}-${ver} 源码" archive_extract "${p}" "${SOURCE_CODE_DIR}/${tail}" "${SOURCE_CODE_DIR}"
-            if [[ -f "${SOURCE_CODE_DIR}/${tail}" ]]; then
-              du -sh "${SOURCE_CODE_DIR}/${tail}"
-            fi
-            du -sh "${SOURCE_CODE_DIR}/${p}"
           done
-
+          run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
           info "下载与解压步骤完成"
-
-      - name: Check Source Code Directories
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          ls -lh "${SOURCE_CODE_DIR}"
-          tree -L 3 -a "${SOURCE_CODE_DIR}"
-
-      - name: make sqlite autoconf
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          LOG_DIR="${GITHUB_WORKSPACE}/logs"
-          mkdir -p sqlite-build sqlite-releases && cd sqlite-build
-          "${SOURCE_CODE_DIR}/sqlite/configure" \
-            --enable-amalgamation
-          make
-          make amalgamation-tarball
-          find . -type f -name "sqlite-autoconf*.tar.gz" -exec du -sh {} \;
-
-      - name: check sqlite dir
-        shell: bash
-        env:
-          GITHUB_WORKSPACE: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          source "${GITHUB_WORKSPACE}/scripts/functions.sh"
-          export SOURCE_CODE_DIR="${GITHUB_WORKSPACE}/source-code"
-          mkdir -p ${SOURCE_CODE_DIR}/sqlite-releases
-          LOG_DIR="${GITHUB_WORKSPACE}/logs"
-          ls -lh "${SOURCE_CODE_DIR}"
-          tar -xvf "${GITHUB_WORKSPACE}/sqlite-build/sqlite-autoconf-3420000.tar.gz" -C "${SOURCE_CODE_DIR}/sqlite-releases"
-          tree -L 3 -a "${SOURCE_CODE_DIR}/sqlite-releases/sqlite-autoconf*"
+          ls ${SOURCE_CODE_DIR}
+          cd "${SOURCE_CODE_DIR}/bzip2" || echo "cd ${SOURCE_CODE_DIR}/bzip2 失败"
 
 
       - name: upload logs
