@@ -577,7 +577,7 @@ jobs:
           # bzip2
           run "bzip2 build dir" mkdir -p "${BUILD_DIR}/bzip2-build"
           cd "${BUILD_DIR}/bzip2-build"
-          run "bzip2 configure" "${SRC_DIR}/bzip2/configure" \
+          run "bzip2 configure" "${SOURCE_CODE_DIR}/bzip2/configure" \
           --build="${BUILD}" \
           --host="${HOST}" \
           --target="${HOST}" \
