@@ -117,7 +117,7 @@ jobs:
                 project_name="libexpat"
                 ;;
               bzip2)
-                ver="${BZIP2}"
+                ver="${BZIP2_VER}"
                 github_author="RriverBreaker"
                 project_name="bzip2-autoconf"
                 ;;
