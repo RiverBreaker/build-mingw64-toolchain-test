@@ -747,10 +747,11 @@ jobs:
             CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
             CURSES_LIBS="-L${OPT_DIR}/lib -lncursesw" \
             "${SOURCE_CODE_DIR}/python/configure" \
-            --build=x86_64-w64-mingw32 \
-            --host=x86_64-w64-mingw32 \
+            --build=${BUILD} \
+            --host=${HOST} \
             --prefix=${OPT_DIR} \
             --enable-shared \
+            --with-build-python="/usr/bin/python3" \
             --enable-loadable-sqlite-extensions \
             --without-ensurepip \
             --without-c-locale-coercion \
