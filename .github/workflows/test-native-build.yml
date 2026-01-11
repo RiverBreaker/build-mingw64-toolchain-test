@@ -903,24 +903,24 @@ jobs:
           cd "${SOURCE_CODE_DIR}/python" && autoreconf -fi
           cd "${BUILD_DIR}/python-build"
           run "python configure" bash -c '
-            CURSES_CFLAGS="-I/e/build-mingw64/tools/native/opt/include/ncursesw" \
-            CURSES_LIBS="-L/e/build-mingw64/tools/native/opt/lib -lncursesw" \
+            CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
+            CURSES_LIBS="-L${OPT_DIR}/lib -lncursesw" \
             "${SOURCE_CODE_DIR}/python/configure" \
             --build=x86_64-w64-mingw32 \
             --host=x86_64-w64-mingw32 \
-            --prefix=/e/build-mingw64/tools/native/opt \
+            --prefix=${OPT_DIR} \
             --enable-shared \
             --enable-loadable-sqlite-extensions \
             --without-ensurepip \
             --without-c-locale-coercion \
             --with-system-expat \
-            --without-curses \
+            --with-system-ffi \
           CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
           CXXFLAGS="${BASE_CXXFLAGS}" \
           CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
           LDFLAGS="${BASE_LDFLAGS}" \
           OPENSSL_LIBS="-lcrypto -lssl" \
-          LDSHARED="x86_64-w64-mingw32-gcc -shared"'
+          LDSHARED="gcc -shared"'
 
           run "python make" make -j$(nproc)
           run "python install" make install
