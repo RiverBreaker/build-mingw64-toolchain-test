@@ -147,6 +147,7 @@ jobs:
           done
           run "下载 sqlite 源码" curl_download "${SQLITE_BASE_URL}/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
           run "解压 sqlite 源码" archive_extract sqlite "${SOURCE_CODE_DIR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" "${SOURCE_CODE_DIR}"
+          run "git clone cpython-mingw source code" git clone -b mingw-v${PYTHON} https://github.com/msys2-contrib/cpython-mingw.git "${SOURCE_CODE_DIR}/python"
           info "下载与解压步骤完成"
 
       - name: Build cross
@@ -358,9 +359,6 @@ jobs:
           export WINDRES="${CROSS_PREFIX}/bin/${TARGET}-windres"
           export FC="${CROSS_PREFIX}/bin/${TARGET}-gfortran"
 
-          # =========== 1. 核心数学库依赖 (安装到 ${PREFIX}) ===========
-
-
           # =========== 2. libiconv (安装到 ${PREFIX}) ===========
           # libiconv (Windows原生版本)
           run "准备 libiconv build dir" mkdir -p "${BUILD_DIR}/libiconv-build"
@@ -434,6 +432,7 @@ jobs:
             --enable-secure-api \
             --enable-idl \
             --disable-multilib \
+            --with-default-msvcrt=msvcrt \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
@@ -453,6 +452,7 @@ jobs:
             --build="${BUILD}" \
             --with-sysroot="${TARGET_DIR}" \
             --disable-multilib \
+            --with-default-msvcrt=msvcrt \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
@@ -551,6 +551,7 @@ jobs:
             --enable-threads=win32 \
             --enable-lto \
             --enable-plugins \
+            --with-default-msvcrt=msvcrt \
             --disable-nls \
             --disable-multilib \
             --with-gmp="${PREFIX}" \
@@ -737,6 +738,33 @@ jobs:
           run "sqlite make" make -j$(nproc)
           run "sqlite install" make install
 
+          # build python ${OPT_DIR}
+          unset TARGET
+          run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
+          cd "${SOURCE_CODE_DIR}/python" && autoreconf -fi
+          cd "${BUILD_DIR}/python-build"
+          run "python configure" bash -c '
+            CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
+            CURSES_LIBS="-L${OPT_DIR}/lib -lncursesw" \
+            "${SOURCE_CODE_DIR}/python/configure" \
+            --build=x86_64-w64-mingw32 \
+            --host=x86_64-w64-mingw32 \
+            --prefix=${OPT_DIR} \
+            --enable-shared \
+            --enable-loadable-sqlite-extensions \
+            --without-ensurepip \
+            --without-c-locale-coercion \
+            --with-system-expat \
+          CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          CXXFLAGS="${BASE_CXXFLAGS}" \
+          CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          LDFLAGS="${BASE_LDFLAGS}" \
+          OPENSSL_LIBS="-lcrypto -lssl" \
+          LDSHARED="gcc -shared"'
+
+          run "python make" make -j$(nproc)
+          run "python install" make install
+
           cd "${PREFIX}" || exit 1
 
           echo "== Strip exe / dll =="
@@ -898,33 +926,33 @@ jobs:
           export BASE_CPPFLAGS="-I${TARGET_DIR}/include -I${OPT_DIR}/include"
           export BASE_LDFLAGS="-L${TARGET_DIR}/lib -L${OPT_DIR}/lib"
 
-          # build python ${OPT_DIR}
-          unset TARGET
-          run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
-          cd "${SOURCE_CODE_DIR}/python" && autoreconf -fi
-          cd "${BUILD_DIR}/python-build"
-          run "python configure" bash -c '
-            CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
-            CURSES_LIBS="-L${OPT_DIR}/lib -lncursesw" \
-            "${SOURCE_CODE_DIR}/python/configure" \
-            --build=x86_64-w64-mingw32 \
-            --host=x86_64-w64-mingw32 \
-            --prefix=${OPT_DIR} \
-            --enable-shared \
-            --enable-loadable-sqlite-extensions \
-            --without-ensurepip \
-            --without-c-locale-coercion \
-            --with-system-expat \
-            --with-system-ffi \
-          CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-          CXXFLAGS="${BASE_CXXFLAGS}" \
-          CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
-          LDFLAGS="${BASE_LDFLAGS}" \
-          OPENSSL_LIBS="-lcrypto -lssl" \
-          LDSHARED="gcc -shared"'
+          # # build python ${OPT_DIR}
+          # unset TARGET
+          # run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
+          # cd "${SOURCE_CODE_DIR}/python" && autoreconf -fi
+          # cd "${BUILD_DIR}/python-build"
+          # run "python configure" bash -c '
+          #   CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
+          #   CURSES_LIBS="-L${OPT_DIR}/lib -lncursesw" \
+          #   "${SOURCE_CODE_DIR}/python/configure" \
+          #   --build=x86_64-w64-mingw32 \
+          #   --host=x86_64-w64-mingw32 \
+          #   --prefix=${OPT_DIR} \
+          #   --enable-shared \
+          #   --enable-loadable-sqlite-extensions \
+          #   --without-ensurepip \
+          #   --without-c-locale-coercion \
+          #   --with-system-expat \
+          #   --with-system-ffi \
+          # CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          # CXXFLAGS="${BASE_CXXFLAGS}" \
+          # CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          # LDFLAGS="${BASE_LDFLAGS}" \
+          # OPENSSL_LIBS="-lcrypto -lssl" \
+          # LDSHARED="gcc -shared"'
 
-          run "python make" make -j$(nproc)
-          run "python install" make install
+          # run "python make" make -j$(nproc)
+          # run "python install" make install
 
           # build gdb ${PREFIX}
           export TARGET="x86_64-w64-mingw32"
