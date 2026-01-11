@@ -780,6 +780,7 @@ jobs:
           path: "${{ github.workspace }}/mingw-w64-native"
       - uses: msys2/setup-msys2@v2
         with:
+          msystem: MINGW64
           update: true
           install: >-
            base-devel
@@ -915,9 +916,9 @@ jobs:
             --without-c-locale-coercion \
             --with-system-expat \
             --with-system-ffi \
-          CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          CFLAGS="${BASE_CFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
           CXXFLAGS="${BASE_CXXFLAGS}" \
-          CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
+          CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -U_UCRT -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
           LDFLAGS="${BASE_LDFLAGS}" \
           OPENSSL_LIBS="-lcrypto -lssl" \
           LDSHARED="gcc -shared"'
