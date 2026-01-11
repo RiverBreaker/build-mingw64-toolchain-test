@@ -741,7 +741,7 @@ jobs:
           # build python ${OPT_DIR}
           unset TARGET
           run "准备python build dir" mkdir -p "${BUILD_DIR}/python-build"
-          cd "${SOURCE_CODE_DIR}/python" && autoupdate && autoreconf -fi
+          # cd "${SOURCE_CODE_DIR}/python" && autoupdate && autoreconf -fi
           cd "${BUILD_DIR}/python-build"
           run "python configure" bash -c '
             CURSES_CFLAGS="-I${OPT_DIR}/include/ncursesw" \
