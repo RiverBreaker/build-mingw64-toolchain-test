@@ -760,8 +760,7 @@ jobs:
           CXXFLAGS="${BASE_CXXFLAGS}" \
           CPPFLAGS="${BASE_CPPFLAGS} -Wno-error=implicit-function-declaration -I${OPT_DIR}/include/ncursesw -D__USE_MINGW_ANSI_STDIO=1 -DNCURSES_STATIC" \
           LDFLAGS="${BASE_LDFLAGS}" \
-          OPENSSL_LIBS="-lcrypto -lssl" \
-          LDSHARED="gcc -shared"'
+          OPENSSL_LIBS="-lcrypto -lssl"
 
           run "python make" make -j$(nproc)
           run "python install" make install
