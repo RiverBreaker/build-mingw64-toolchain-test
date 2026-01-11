@@ -432,7 +432,7 @@ jobs:
             --enable-secure-api \
             --enable-idl \
             --disable-multilib \
-            --with-default-msvcrt=msvcrt \
+            --with-default-msvcrt=ucrt \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
@@ -452,7 +452,7 @@ jobs:
             --build="${BUILD}" \
             --with-sysroot="${TARGET_DIR}" \
             --disable-multilib \
-            --with-default-msvcrt=msvcrt \
+            --with-default-msvcrt=ucrt \
             CFLAGS="${CFLAGS}" \
             CXXFLAGS="${CXXFLAGS}" \
             LDFLAGS="${LDFLAGS}" \
@@ -551,7 +551,7 @@ jobs:
             --enable-threads=win32 \
             --enable-lto \
             --enable-plugins \
-            --with-default-msvcrt=msvcrt \
+            --with-default-msvcrt=ucrt \
             --disable-nls \
             --disable-multilib \
             --with-gmp="${PREFIX}" \
